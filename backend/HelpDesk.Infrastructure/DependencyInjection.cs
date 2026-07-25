@@ -1,3 +1,5 @@
+using HelpDesk.Infrastructure.Identity;
+using HelpDesk.Infrastructure.Identity.Seeding;
 using HelpDesk.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -16,6 +18,14 @@ public static class DependencyInjection
                 configuration.GetConnectionString("DefaultConnection")
             )
         );
+
+        services
+            .AddIdentityCore<ApplicationUser>()
+            .AddRoles<ApplicationRole>()
+            .AddEntityFrameworkStores<ApplicationDbContext>();
+        
+        services.AddScoped<RoleSeeder>();
+        services.AddScoped<AdminSeeder>();
 
         return services;
     }
