@@ -1,5 +1,6 @@
 using HelpDesk.Api.Exceptions;
 using HelpDesk.Application;
+using HelpDesk.Application.Authorization;
 using HelpDesk.Infrastructure;
 using HelpDesk.Infrastructure.Identity.Seeding;
 
@@ -31,5 +32,14 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapGet("/admin", () =>
+{
+    return Results.Ok(new
+    {
+        Message = "Welcome, Admin!"
+    });
+})
+.RequireAuthorization(Policies.AdminOnly);
 
 app.Run();
