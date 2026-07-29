@@ -1,10 +1,11 @@
 using System.Text;
 using HelpDesk.Application.Abstractions.Authentication;
-using HelpDesk.Infrastructure.Authentication;
+using HelpDesk.Infrastructure.Authentication.Jwt;
 using HelpDesk.Infrastructure.Identity;
 using HelpDesk.Infrastructure.Identity.Seeding;
 using HelpDesk.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,54 +19,94 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        services
+            .AddPersistence(configuration)
+            .AddIdentity()
+            .AddJwt(configuration)
+            .AddSeeders(configuration);
+
+        return services;
+    }
+
+    private static IServiceCollection AddPersistence(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseSqlServer(
-                configuration.GetConnectionString("DefaultConnection")
-            )
-        );
+                configuration.GetConnectionString("DefaultConnection")));
 
-        services.AddOptions<JwtOptions>()
-            .Bind(configuration.GetSection("Jwt"))
-            .ValidateDataAnnotations()
-            .Validate(
-                options => Encoding.UTF8.GetByteCount(options.Key) >= 32,
-                "Jwt:SigningKey must contain at least 32 bytes.")
-            .ValidateOnStart();
+        return services;
+    }
 
+    private static IServiceCollection AddIdentity(
+        this IServiceCollection services)
+    {
         services
             .AddIdentityCore<ApplicationUser>()
             .AddRoles<ApplicationRole>()
-            .AddEntityFrameworkStores<ApplicationDbContext>();
+            .AddEntityFrameworkStores<ApplicationDbContext>()
+            .AddDefaultTokenProviders();
 
-        var jwt = configuration.GetSection("Jwt").Get<JwtOptions>()
-            ?? throw new InvalidOperationException("Jwt configuration is missing.");
+        services.AddScoped<IIdentityService, IdentityService>();
 
-        if (Encoding.UTF8.GetByteCount(jwt.Key) < 32)
-        {
-            throw new InvalidOperationException(
-                "Jwt:SigningKey must contain at least 32 bytes.");
-        }
+        return services;
+    }
 
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    private static IServiceCollection AddJwt(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddOptions<JwtOptions>()
+            .Bind(configuration.GetSection(JwtOptions.SectionName))
+            .ValidateDataAnnotations()
+            .Validate(
+                options => Encoding.UTF8.GetByteCount(options.Key) >= 32,
+                "Jwt:Key must contain at least 32 bytes.")
+            .ValidateOnStart();
+
+        var jwt = configuration
+            .GetRequiredSection(JwtOptions.SectionName)
+            .Get<JwtOptions>()!;
+
+        services
+            .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
                     ValidateAudience = true,
-                    ValidateLifetime = true,
                     ValidateIssuerSigningKey = true,
+                    ValidateLifetime = true,
+
                     ValidIssuer = jwt.Issuer,
                     ValidAudience = jwt.Audience,
+
                     IssuerSigningKey = new SymmetricSecurityKey(
                         Encoding.UTF8.GetBytes(jwt.Key))
                 };
             });
-        
-        services.AddScoped<TokenService>();
-        services.AddScoped<IAuthService, AuthService>();
-        services.AddScoped<AdminSeeder>();
+
+        services.AddAuthorization();
+
+        services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+
+        return services;
+    }
+
+    private static IServiceCollection AddSeeders(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddOptions<SeedAdminOptions>()
+            .Bind(configuration.GetSection(SeedAdminOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
         services.AddScoped<RoleSeeder>();
+        services.AddScoped<UserSeeder>();
+        services.AddScoped<IdentitySeeder>();
 
         return services;
     }

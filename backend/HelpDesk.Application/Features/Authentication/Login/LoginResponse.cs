@@ -1,4 +1,4 @@
-namespace HelpDesk.Application.DTOs.Authentication;
+namespace HelpDesk.Application.Features.Authentication.Login;
 
 public sealed record LoginResponse(
     string AccessToken

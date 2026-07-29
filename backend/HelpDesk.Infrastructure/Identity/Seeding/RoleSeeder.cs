@@ -1,3 +1,4 @@
+using HelpDesk.Application.Authorization;
 using Microsoft.AspNetCore.Identity;
 
 namespace HelpDesk.Infrastructure.Identity.Seeding;
@@ -8,15 +9,7 @@ public sealed class RoleSeeder(RoleManager<ApplicationRole> roleManager)
 
     public async Task SeedAsync()
     {
-        string[] roles =
-        [
-            "Admin",
-            "IT Support Specialist",
-            "Manager",
-            "Employee"
-        ];
-
-        foreach(var role in roles)
+        foreach(var role in Roles.All)
         {
             if (await _roleManager.RoleExistsAsync(role)) continue;
 

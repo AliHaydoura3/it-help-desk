@@ -1,20 +1,21 @@
-using HelpDesk.Application.Abstractions.Authentication;
-using HelpDesk.Application.DTOs.Authentication;
+using HelpDesk.Application.Features.Authentication.Login;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HelpDesk.Api.Controllers;
 
 [ApiController]
-[Route("api/auth")]
-public sealed class AuthController(IAuthService authService) : ControllerBase
+[Route("api/[controller]")]
+public sealed class AuthController(ISender sender) : ControllerBase
 {
-    private readonly IAuthService _authService = authService;
+    private readonly ISender _sender = sender;
+
 
     [HttpPost("login")]
-    public async Task<ActionResult> Login(LoginRequest request)
+    public async Task<IActionResult> Login([FromBody] LoginCommand command, CancellationToken cancellationToken)
     {
-        var result = await _authService.LoginAsync(request);
+        var response = await _sender.Send(command, cancellationToken);
 
-        return Ok(result);
+        return Ok(response);
     }
 }
