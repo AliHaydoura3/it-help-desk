@@ -1,6 +1,7 @@
 using System.Text;
 using HelpDesk.Application.Abstractions.Authentication;
 using HelpDesk.Infrastructure.Authentication.Jwt;
+using HelpDesk.Infrastructure.Authorization;
 using HelpDesk.Infrastructure.Identity;
 using HelpDesk.Infrastructure.Identity.Seeding;
 using HelpDesk.Infrastructure.Persistence;
@@ -23,7 +24,8 @@ public static class DependencyInjection
             .AddPersistence(configuration)
             .AddIdentity()
             .AddJwt(configuration)
-            .AddSeeders(configuration);
+            .AddSeeders(configuration)
+            .AddApplicationAuthorization();
 
         return services;
     }

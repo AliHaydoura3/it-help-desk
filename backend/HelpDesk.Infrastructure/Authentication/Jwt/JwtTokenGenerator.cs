@@ -1,4 +1,4 @@
-using HelpDesk.Application.Authentication;
+using HelpDesk.Application.Common.Authentication;
 using HelpDesk.Application.Abstractions.Authentication;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;

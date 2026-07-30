@@ -1,6 +1,6 @@
 using HelpDesk.Api.Exceptions;
 using HelpDesk.Application;
-using HelpDesk.Application.Authorization;
+using HelpDesk.Application.Common.Authorization;
 using HelpDesk.Infrastructure;
 using HelpDesk.Infrastructure.Identity.Seeding;
 
@@ -15,6 +15,17 @@ builder.Services
     .AddApplication()
     .AddInfrastructure(builder.Configuration);
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("Frontend", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:5173")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -26,6 +37,8 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseHttpsRedirection();
+app.UseCors("Frontend");
+
 app.UseExceptionHandler();
 
 app.UseAuthentication();

@@ -1,4 +1,4 @@
-using HelpDesk.Application.Authentication;
+using HelpDesk.Application.Common.Authentication;
 
 namespace HelpDesk.Application.Abstractions.Authentication;
 

@@ -1,4 +1,4 @@
-namespace HelpDesk.Application.Authorization;
+namespace HelpDesk.Application.Common.Authorization;
 
 public static class Roles
 {

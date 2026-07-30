@@ -1,4 +1,4 @@
-using HelpDesk.Application.Authorization;
+using HelpDesk.Application.Common.Authorization;
 using Microsoft.AspNetCore.Identity;
 
 namespace HelpDesk.Infrastructure.Identity.Seeding;

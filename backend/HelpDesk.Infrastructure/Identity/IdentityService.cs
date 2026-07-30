@@ -1,4 +1,4 @@
-using HelpDesk.Application.Authentication;
+using HelpDesk.Application.Common.Authentication;
 using HelpDesk.Application.Abstractions.Authentication;
 using HelpDesk.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;

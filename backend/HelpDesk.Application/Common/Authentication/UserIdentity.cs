@@ -1,4 +1,4 @@
-namespace HelpDesk.Application.Authentication;
+namespace HelpDesk.Application.Common.Authentication;
 
 public sealed record UserIdentity(
     Guid Id,
