@@ -180,6 +180,9 @@ export default function DashboardPage() {
           <Link className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" to="/activity-logs">
             <Activity className="size-4" /> Activity logs
           </Link>
+          <Link className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" to="/tickets">
+            <Activity className="size-4" /> Tickets
+          </Link>
         </nav>
         <div className="border-t p-3">
           <Link className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" to="/profile">

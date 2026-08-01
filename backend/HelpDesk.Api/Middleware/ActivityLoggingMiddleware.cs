@@ -8,7 +8,7 @@ public sealed class ActivityLoggingMiddleware(RequestDelegate next)
 {
     public async Task InvokeAsync(
         HttpContext context,
-        ApplicationDbContext dbContext)
+        IServiceScopeFactory scopeFactory)
     {
         await next(context);
 
@@ -19,6 +19,10 @@ public sealed class ActivityLoggingMiddleware(RequestDelegate next)
             ?? context.User.FindFirstValue("sub");
         var email = context.User.FindFirstValue(ClaimTypes.Email)
             ?? context.User.FindFirstValue("email");
+
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider
+            .GetRequiredService<ApplicationDbContext>();
 
         dbContext.UserActivityLogs.Add(new UserActivityLog
         {
@@ -35,6 +39,6 @@ public sealed class ActivityLoggingMiddleware(RequestDelegate next)
             OccurredAtUtc = DateTime.UtcNow
         });
 
-        await dbContext.SaveChangesAsync(context.RequestAborted);
+        await dbContext.SaveChangesAsync(CancellationToken.None);
     }
 }

@@ -11,6 +11,14 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     public DbSet<UserActivityLog> UserActivityLogs => Set<UserActivityLog>();
 
+    public DbSet<Ticket> Tickets => Set<Ticket>();
+
+    public DbSet<TicketHistory> TicketHistories => Set<TicketHistory>();
+
+    public DbSet<TicketAssignmentHistory> TicketAssignmentHistories => Set<TicketAssignmentHistory>();
+
+    public DbSet<TicketInternalNote> TicketInternalNotes => Set<TicketInternalNote>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -35,6 +43,56 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(log => log.IpAddress).HasMaxLength(64);
             entity.HasIndex(log => log.OccurredAtUtc);
             entity.HasIndex(log => log.UserId);
+        });
+
+        modelBuilder.Entity<Ticket>(entity =>
+        {
+            entity.HasKey(ticket => ticket.Id);
+            entity.Property(ticket => ticket.ReferenceNumber).HasMaxLength(32).IsRequired();
+            entity.HasIndex(ticket => ticket.ReferenceNumber).IsUnique();
+            entity.Property(ticket => ticket.Title).HasMaxLength(200).IsRequired();
+            entity.Property(ticket => ticket.Description).HasMaxLength(4000).IsRequired();
+            entity.HasIndex(ticket => ticket.CreatedByUserId);
+            entity.HasIndex(ticket => new { ticket.Status, ticket.Priority });
+            entity.Property(ticket => ticket.RowVersion).IsRowVersion();
+            entity.HasMany(ticket => ticket.History)
+                .WithOne()
+                .HasForeignKey(history => history.TicketId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(ticket => ticket.AssignmentHistory)
+                .WithOne()
+                .HasForeignKey(history => history.TicketId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(ticket => ticket.InternalNotes)
+                .WithOne()
+                .HasForeignKey(note => note.TicketId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.Navigation(ticket => ticket.History).UsePropertyAccessMode(PropertyAccessMode.Field);
+            entity.Navigation(ticket => ticket.AssignmentHistory).UsePropertyAccessMode(PropertyAccessMode.Field);
+            entity.Navigation(ticket => ticket.InternalNotes).UsePropertyAccessMode(PropertyAccessMode.Field);
+        });
+
+        modelBuilder.Entity<TicketHistory>(entity =>
+        {
+            entity.HasKey(history => history.Id);
+            entity.Property(history => history.Action).HasMaxLength(100).IsRequired();
+            entity.Property(history => history.PreviousValue).HasMaxLength(500);
+            entity.Property(history => history.NewValue).HasMaxLength(500);
+            entity.HasIndex(history => history.TicketId);
+        });
+
+        modelBuilder.Entity<TicketAssignmentHistory>(entity =>
+        {
+            entity.HasKey(history => history.Id);
+            entity.HasIndex(history => history.TicketId);
+            entity.HasIndex(history => history.AssignedAgentId);
+        });
+
+        modelBuilder.Entity<TicketInternalNote>(entity =>
+        {
+            entity.HasKey(note => note.Id);
+            entity.Property(note => note.Content).HasMaxLength(4000).IsRequired();
+            entity.HasIndex(note => note.TicketId);
         });
     }
 }

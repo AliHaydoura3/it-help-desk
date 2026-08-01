@@ -24,7 +24,7 @@ interface UserFormDialogProps {
 
 const roleLabels: Record<string, string> = {
   Admin: "Administrator",
-  ITSupportSpecialist: "IT Support Specialist",
+  ITSupportSpecialist: "IT Support Agent",
   Manager: "Manager",
   Employee: "Employee",
 };

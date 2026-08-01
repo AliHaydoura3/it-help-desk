@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import { type LoginFormData, loginSchema } from "../validation/loginSchema";
 import { useLogin } from "../hooks/useLogin";
 import { useAuth } from "../hooks/useAuth";
+import { parseAccessToken } from "../utils/parseAccessToken";
+import { getDefaultRoute } from "../utils/getDefaultRoute";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -45,7 +47,7 @@ export function LoginForm() {
 
       toast.success("Welcome back!");
 
-      navigate("/", { replace: true });
+      navigate(getDefaultRoute(parseAccessToken(response.accessToken)), { replace: true });
     } catch {
       toast.error("Invalid email or password.");
     }

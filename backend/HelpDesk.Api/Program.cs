@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using HelpDesk.Api.Exceptions;
 using HelpDesk.Application;
 using HelpDesk.Application.Common.Authorization;
@@ -7,7 +8,11 @@ using HelpDesk.Api.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.Converters.Add(
+        new JsonStringEnumConverter());
+});
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 

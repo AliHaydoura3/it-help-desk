@@ -21,7 +21,7 @@ interface UserTableProps {
 
 const roleLabels: Record<string, string> = {
   Admin: "Admin",
-  ITSupportSpecialist: "IT Support",
+  ITSupportSpecialist: "IT Support Agent",
   Manager: "Manager",
   Employee: "Employee",
 };

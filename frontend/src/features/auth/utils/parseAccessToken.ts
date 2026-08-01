@@ -4,6 +4,8 @@ const ROLE_CLAIM =
   "http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
 
 interface JwtPayload {
+  sub?: string;
+  "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"?: string;
   email?: string;
   role?: string | string[];
   [ROLE_CLAIM]?: string | string[];
@@ -24,6 +26,10 @@ export function parseAccessToken(token: string | null): AuthUser | null {
     const roleClaim = payload[ROLE_CLAIM] ?? payload.role ?? [];
 
     return {
+      id:
+        payload.sub ??
+        payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] ??
+        "",
       email: payload.email ?? "Administrator",
       roles: Array.isArray(roleClaim) ? roleClaim : [roleClaim],
     };

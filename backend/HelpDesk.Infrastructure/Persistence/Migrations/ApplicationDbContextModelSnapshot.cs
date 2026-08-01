@@ -58,6 +58,167 @@ namespace HelpDesk.Infrastructure.Persistence.Migrations
                     b.ToTable("RefreshTokens");
                 });
 
+            modelBuilder.Entity("HelpDesk.Domain.Ticket", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("AssignedToUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Category")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<int>("EscalationLevel")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsCancelled")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ReferenceNumber")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("ReferenceNumber")
+                        .IsUnique();
+
+                    b.HasIndex("Status", "Priority");
+
+                    b.ToTable("Tickets");
+                });
+
+            modelBuilder.Entity("HelpDesk.Domain.TicketAssignmentHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AssignedAgentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("AssignmentType")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("OccurredAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("PreviousAgentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TicketId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssignedAgentId");
+
+                    b.HasIndex("TicketId");
+
+                    b.ToTable("TicketAssignmentHistories");
+                });
+
+            modelBuilder.Entity("HelpDesk.Domain.TicketHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("NewValue")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("OccurredAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PreviousValue")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("TicketId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TicketId");
+
+                    b.ToTable("TicketHistories");
+                });
+
+            modelBuilder.Entity("HelpDesk.Domain.TicketInternalNote", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AuthorUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("TicketId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TicketId");
+
+                    b.ToTable("TicketInternalNotes");
+                });
+
             modelBuilder.Entity("HelpDesk.Domain.UserActivityLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -312,6 +473,33 @@ namespace HelpDesk.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("HelpDesk.Domain.TicketAssignmentHistory", b =>
+                {
+                    b.HasOne("HelpDesk.Domain.Ticket", null)
+                        .WithMany("AssignmentHistory")
+                        .HasForeignKey("TicketId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("HelpDesk.Domain.TicketHistory", b =>
+                {
+                    b.HasOne("HelpDesk.Domain.Ticket", null)
+                        .WithMany("History")
+                        .HasForeignKey("TicketId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("HelpDesk.Domain.TicketInternalNote", b =>
+                {
+                    b.HasOne("HelpDesk.Domain.Ticket", null)
+                        .WithMany("InternalNotes")
+                        .HasForeignKey("TicketId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
                     b.HasOne("HelpDesk.Infrastructure.Identity.ApplicationRole", null)
@@ -361,6 +549,15 @@ namespace HelpDesk.Infrastructure.Persistence.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("HelpDesk.Domain.Ticket", b =>
+                {
+                    b.Navigation("AssignmentHistory");
+
+                    b.Navigation("History");
+
+                    b.Navigation("InternalNotes");
                 });
 #pragma warning restore 612, 618
         }

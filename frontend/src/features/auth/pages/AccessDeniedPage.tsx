@@ -1,9 +1,10 @@
-import { ArrowLeft, ShieldX } from "lucide-react";
+import { ArrowLeft, House, ShieldX } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "../hooks/useAuth";
+import { getDefaultRoute } from "../utils/getDefaultRoute";
 
 export default function AccessDeniedPage() {
   const auth = useAuth();
@@ -23,12 +24,17 @@ export default function AccessDeniedPage() {
           </div>
           <h1 className="mt-5 text-2xl font-semibold">Access denied</h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            User management is restricted to administrators. Sign in with an
-            administrator account to continue.
+            Your account does not have permission to open this page. You can
+            return to your available workspace or sign out.
           </p>
-          <Button className="mt-6" onClick={signOut} variant="outline">
-            <ArrowLeft /> Sign out
-          </Button>
+          <div className="mt-6 flex flex-col justify-center gap-2 sm:flex-row">
+            <Button onClick={() => navigate(getDefaultRoute(auth.user), { replace: true })}>
+              <House /> Return to workspace
+            </Button>
+            <Button onClick={signOut} variant="outline">
+              <ArrowLeft /> Sign out
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </main>

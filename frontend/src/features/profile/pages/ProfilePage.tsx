@@ -70,7 +70,7 @@ export default function ProfilePage() {
   return (
     <main className="min-h-screen bg-muted/35 px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-4xl">
-        <Button render={<Link to="/" />} variant="ghost"><ArrowLeft /> Back to dashboard</Button>
+        <Button render={<Link to="/" />} variant="ghost"><ArrowLeft /> Back to workspace</Button>
         <div className="mt-5">
           <h1 className="text-3xl font-semibold tracking-tight">Your profile</h1>
           <p className="mt-2 text-sm text-muted-foreground">Manage your personal details and password.</p>

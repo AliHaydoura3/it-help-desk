@@ -1,6 +1,9 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using HelpDesk.Application.Common.Exceptions;
+using HelpDesk.Domain;
+using Microsoft.EntityFrameworkCore;
 
 namespace HelpDesk.Api.Exceptions;
 
@@ -36,6 +39,12 @@ public sealed class GlobalExceptionHandler(
                 null
             ),
 
+            ForbiddenAccessException => (
+                StatusCodes.Status403Forbidden,
+                "Forbidden.",
+                null
+            ),
+
             KeyNotFoundException => (
                 StatusCodes.Status404NotFound,
                 "Resource not found.",
@@ -45,6 +54,18 @@ public sealed class GlobalExceptionHandler(
             InvalidOperationException => (
                 StatusCodes.Status409Conflict,
                 "Operation is not valid.",
+                null
+            ),
+
+            DomainRuleException => (
+                StatusCodes.Status409Conflict,
+                "A ticket workflow rule was violated.",
+                null
+            ),
+
+            DbUpdateConcurrencyException => (
+                StatusCodes.Status409Conflict,
+                "The ticket was modified by another request. Reload and try again.",
                 null
             ),
 

@@ -8,6 +8,9 @@ using HelpDesk.Infrastructure.Persistence;
 using HelpDesk.Infrastructure.Email;
 using HelpDesk.Application.Abstractions.Logging;
 using HelpDesk.Infrastructure.Logging;
+using HelpDesk.Application.Abstractions.Tickets;
+using HelpDesk.Infrastructure.Authentication;
+using HelpDesk.Infrastructure.Tickets;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -79,6 +82,10 @@ public static class DependencyInjection
 
         services.AddScoped<IIdentityService, IdentityService>();
         services.AddScoped<IActivityLogReader, ActivityLogReader>();
+        services.AddHttpContextAccessor();
+        services.AddScoped<ICurrentUser, CurrentUser>();
+        services.AddScoped<ITicketService, TicketService>();
+        services.AddScoped<ITicketWorkflowService, TicketWorkflowService>();
 
         return services;
     }
