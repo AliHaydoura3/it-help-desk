@@ -5,6 +5,7 @@ import {
   removeAccessToken,
   setAccessToken,
 } from "../utils/tokenStorage";
+import { parseAccessToken } from "../utils/parseAccessToken";
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [accessToken, setToken] = useState<string | null>(getAccessToken());
@@ -23,6 +24,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     () => ({
       accessToken,
       isAuthenticated: accessToken !== null,
+      user: parseAccessToken(accessToken),
       login,
       logout,
     }),
