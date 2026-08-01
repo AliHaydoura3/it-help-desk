@@ -5,6 +5,8 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   accessToken: string;
+  refreshToken: string;
+  refreshTokenExpiresAtUtc: string;
 }
 
 export interface AuthUser {

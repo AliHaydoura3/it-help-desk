@@ -26,9 +26,14 @@ public sealed class LoginHandler(
                 "Invalid email or password.");
         }
 
-        var token = _jwtTokenGenerator.GenerateAccessToken(user);
+        var accessToken = _jwtTokenGenerator.GenerateAccessToken(user);
+        var session = await _identityService.CreateRefreshSessionAsync(
+            user,
+            cancellationToken);
 
         return new LoginResponse(
-            token);
+            accessToken,
+            session.RefreshToken,
+            session.RefreshTokenExpiresAtUtc);
     }
 }

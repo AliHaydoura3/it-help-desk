@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using HelpDesk.Application.Common.Authentication;
 using HelpDesk.Application.Abstractions.Authentication;
 using HelpDesk.Infrastructure.Identity;
@@ -5,16 +7,27 @@ using Microsoft.AspNetCore.Identity;
 using HelpDesk.Application.Features.Users.CreateUser;
 using HelpDesk.Application.Features.Users.GetUsers;
 using HelpDesk.Application.Features.Users.UpdateUser;
+using HelpDesk.Application.Features.Profile.GetProfile;
+using HelpDesk.Application.Features.Profile.UpdateProfile;
 using FluentValidation.Results;
 using Microsoft.EntityFrameworkCore;
+using HelpDesk.Infrastructure.Authentication.Jwt;
+using HelpDesk.Infrastructure.Persistence;
+using HelpDesk.Domain;
+using Microsoft.Extensions.Options;
 
 namespace HelpDesk.Infrastructure.Identity;
 
 public sealed class IdentityService(
-    UserManager<ApplicationUser> userManager, RoleManager<ApplicationRole> roleManager) : IIdentityService
+    UserManager<ApplicationUser> userManager,
+    RoleManager<ApplicationRole> roleManager,
+    ApplicationDbContext dbContext,
+    IOptions<JwtOptions> jwtOptions) : IIdentityService
 {
     private readonly UserManager<ApplicationUser> _userManager = userManager;
     private readonly RoleManager<ApplicationRole> _roleManager = roleManager;
+    private readonly ApplicationDbContext _dbContext = dbContext;
+    private readonly JwtOptions _jwtOptions = jwtOptions.Value;
 
 
     public async Task<UserIdentity?> ValidateCredentialsAsync(
@@ -24,7 +37,8 @@ public sealed class IdentityService(
     {
         var user = await _userManager.FindByEmailAsync(email);
 
-        if (user is null || !user.IsActive)
+        if (user is null || !user.IsActive ||
+            await _userManager.IsLockedOutAsync(user))
         {
             return null;
         }
@@ -34,8 +48,11 @@ public sealed class IdentityService(
 
         if (!passwordValid)
         {
+            await _userManager.AccessFailedAsync(user);
             return null;
         }
+
+        await _userManager.ResetAccessFailedCountAsync(user);
 
         var roles = await _userManager.GetRolesAsync(user);
 
@@ -43,6 +60,199 @@ public sealed class IdentityService(
             user.Id,
             user.Email!,
             roles);
+    }
+
+    public async Task<RefreshSession> CreateRefreshSessionAsync(
+        UserIdentity user,
+        CancellationToken cancellationToken = default)
+    {
+        var (refreshToken, entity) = CreateRefreshToken(user.Id);
+
+        _dbContext.RefreshTokens.Add(entity);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return new RefreshSession(
+            user,
+            refreshToken,
+            entity.ExpiresAtUtc);
+    }
+
+    public async Task<RefreshSession?> RotateRefreshSessionAsync(
+        string refreshToken,
+        CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+        var tokenHash = HashToken(refreshToken);
+        var existingToken = await _dbContext.RefreshTokens
+            .SingleOrDefaultAsync(
+                token => token.TokenHash == tokenHash,
+                cancellationToken);
+
+        if (existingToken is null ||
+            existingToken.RevokedAtUtc.HasValue ||
+            existingToken.ExpiresAtUtc <= now)
+        {
+            return null;
+        }
+
+        var user = await _userManager.FindByIdAsync(
+            existingToken.UserId.ToString());
+
+        if (user is null || !user.IsActive)
+            return null;
+
+        var roles = await _userManager.GetRolesAsync(user);
+        var identity = new UserIdentity(user.Id, user.Email!, roles);
+        var (newToken, newEntity) = CreateRefreshToken(user.Id);
+
+        existingToken.RevokedAtUtc = now;
+        existingToken.ReplacedByTokenId = newEntity.Id;
+        _dbContext.RefreshTokens.Add(newEntity);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return new RefreshSession(
+            identity,
+            newToken,
+            newEntity.ExpiresAtUtc);
+    }
+
+    public async Task RevokeRefreshSessionAsync(
+        string refreshToken,
+        CancellationToken cancellationToken = default)
+    {
+        var tokenHash = HashToken(refreshToken);
+        var token = await _dbContext.RefreshTokens.SingleOrDefaultAsync(
+            storedToken => storedToken.TokenHash == tokenHash,
+            cancellationToken);
+
+        if (token is null || token.RevokedAtUtc.HasValue)
+            return;
+
+        token.RevokedAtUtc = DateTime.UtcNow;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<string?> GeneratePasswordResetTokenAsync(
+        string email,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var user = await _userManager.FindByEmailAsync(email);
+
+        if (user is null || !user.IsActive)
+            return null;
+
+        return await _userManager.GeneratePasswordResetTokenAsync(user);
+    }
+
+    public async Task ResetPasswordAsync(
+        string email,
+        string token,
+        string newPassword,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var user = await _userManager.FindByEmailAsync(email)
+            ?? throw new FluentValidation.ValidationException(
+                "The reset link is invalid or has expired.");
+        var result = await _userManager.ResetPasswordAsync(
+            user,
+            token,
+            newPassword);
+
+        if (!result.Succeeded)
+            ThrowIdentityErrors(result);
+
+        var activeTokens = await _dbContext.RefreshTokens
+            .Where(refreshToken =>
+                refreshToken.UserId == user.Id &&
+                !refreshToken.RevokedAtUtc.HasValue)
+            .ToListAsync(cancellationToken);
+
+        foreach (var activeToken in activeTokens)
+            activeToken.RevokedAtUtc = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<GetProfileResponse> GetProfileAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var user = await FindUserByIdAsync(userId);
+        var roles = await _userManager.GetRolesAsync(user);
+
+        return new GetProfileResponse(
+            user.Id,
+            user.FirstName,
+            user.LastName,
+            user.Email!,
+            roles.ToArray());
+    }
+
+    public async Task<UpdateProfileResponse> UpdateProfileAsync(
+        UpdateProfileCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var user = await FindUserByIdAsync(command.UserId);
+        var userWithEmail = await _userManager.FindByEmailAsync(command.Email);
+
+        if (userWithEmail is not null && userWithEmail.Id != user.Id)
+            throw new InvalidOperationException("Email already exists.");
+
+        user.FirstName = command.FirstName;
+        user.LastName = command.LastName;
+        user.Email = command.Email;
+        user.UserName = command.Email;
+
+        var result = await _userManager.UpdateAsync(user);
+
+        if (!result.Succeeded)
+            ThrowIdentityErrors(result);
+
+        var roles = await _userManager.GetRolesAsync(user);
+
+        return new UpdateProfileResponse(
+            user.Id,
+            user.FirstName,
+            user.LastName,
+            user.Email!,
+            roles.ToArray());
+    }
+
+    public async Task ChangePasswordAsync(
+        Guid userId,
+        string currentPassword,
+        string newPassword,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var user = await FindUserByIdAsync(userId);
+        var result = await _userManager.ChangePasswordAsync(
+            user,
+            currentPassword,
+            newPassword);
+
+        if (!result.Succeeded)
+            ThrowIdentityErrors(result);
+
+        var tokens = await _dbContext.RefreshTokens
+            .Where(token =>
+                token.UserId == userId &&
+                !token.RevokedAtUtc.HasValue)
+            .ToListAsync(cancellationToken);
+
+        foreach (var token in tokens)
+            token.RevokedAtUtc = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<CreateUserResponse> CreateUserAsync(
@@ -297,5 +507,34 @@ public sealed class IdentityService(
                 error.Description));
 
         throw new FluentValidation.ValidationException(failures);
+    }
+
+    private (string RawToken, RefreshToken Entity) CreateRefreshToken(
+        Guid userId)
+    {
+        var rawToken = Convert.ToBase64String(
+            RandomNumberGenerator.GetBytes(64))
+            .Replace("+", "-")
+            .Replace("/", "_")
+            .TrimEnd('=');
+        var now = DateTime.UtcNow;
+
+        return (
+            rawToken,
+            new RefreshToken
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                TokenHash = HashToken(rawToken),
+                CreatedAtUtc = now,
+                ExpiresAtUtc = now.AddDays(
+                    _jwtOptions.RefreshTokenExpiryDays)
+            });
+    }
+
+    private static string HashToken(string token)
+    {
+        return Convert.ToHexString(
+            SHA256.HashData(Encoding.UTF8.GetBytes(token)));
     }
 }

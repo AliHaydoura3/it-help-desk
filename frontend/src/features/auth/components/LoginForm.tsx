@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, Lock, Mail, Shield } from "lucide-react";
@@ -40,7 +41,7 @@ export function LoginForm() {
     try {
       const response = await mutation.mutateAsync(data);
 
-      auth.login(response.accessToken);
+      auth.login(response.accessToken, response.refreshToken);
 
       toast.success("Welcome back!");
 
@@ -89,7 +90,10 @@ export function LoginForm() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Password</Label>
+              <Link className="text-xs text-muted-foreground hover:text-foreground" to="/forgot-password">Forgot password?</Link>
+            </div>
 
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

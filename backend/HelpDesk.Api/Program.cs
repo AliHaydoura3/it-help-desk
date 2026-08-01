@@ -3,6 +3,7 @@ using HelpDesk.Application;
 using HelpDesk.Application.Common.Authorization;
 using HelpDesk.Infrastructure;
 using HelpDesk.Infrastructure.Identity.Seeding;
+using HelpDesk.Api.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,6 +40,7 @@ using (var scope = app.Services.CreateScope())
 app.UseHttpsRedirection();
 app.UseCors("Frontend");
 
+app.UseMiddleware<ActivityLoggingMiddleware>();
 app.UseExceptionHandler();
 
 app.UseAuthentication();

@@ -7,6 +7,7 @@ import {
   Menu,
   Search,
   ShieldCheck,
+  UserRound,
   UserRoundCheck,
   UserRoundPlus,
   Users,
@@ -14,12 +15,14 @@ import {
   X,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/features/auth/hooks/useAuth";
+import { logoutSession } from "@/features/auth/api/logout";
 import { DeactivateUserDialog } from "@/features/users/components/DeactivateUserDialog";
 import { UserFormDialog } from "@/features/users/components/UserFormDialog";
 import { UserTable } from "@/features/users/components/UserTable";
@@ -78,7 +81,12 @@ export default function DashboardPage() {
     }
   }, [pageNumber, usersQuery.data?.totalPages]);
 
-  function logout() {
+  async function logout() {
+    try {
+      await logoutSession();
+    } catch {
+      // Local session cleanup must still happen if the API is unavailable.
+    }
     auth.logout();
     navigate("/login");
   }
@@ -169,8 +177,14 @@ export default function DashboardPage() {
           <div className="flex items-center gap-3 rounded-xl bg-primary px-3 py-2.5 text-sm font-medium text-primary-foreground shadow-sm">
             <Users className="size-4" /> Users
           </div>
+          <Link className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" to="/activity-logs">
+            <Activity className="size-4" /> Activity logs
+          </Link>
         </nav>
         <div className="border-t p-3">
+          <Link className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" to="/profile">
+            <UserRound className="size-4" /> My profile
+          </Link>
           <button className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" onClick={logout}>
             <LogOut className="size-4" /> Sign out
           </button>
@@ -188,8 +202,10 @@ export default function DashboardPage() {
               <div className="flex items-center gap-3 rounded-xl bg-primary px-3 py-2.5 text-sm font-medium text-primary-foreground">
                 <Users className="size-4" /> Users
               </div>
+              <Link className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted" to="/activity-logs"><Activity className="size-4" /> Activity logs</Link>
             </nav>
             <div className="px-3">
+              <Link className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted" to="/profile"><UserRound className="size-4" /> My profile</Link>
               <button className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted" onClick={logout}>
                 <LogOut className="size-4" /> Sign out
               </button>
