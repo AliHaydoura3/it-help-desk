@@ -7,5 +7,5 @@ public sealed record CreateUserCommand(
     string LastName,
     string Email,
     string Password,
-    IEnumerable<string> Roles
+    string Role
 ) : IRequest<CreateUserResponse>;

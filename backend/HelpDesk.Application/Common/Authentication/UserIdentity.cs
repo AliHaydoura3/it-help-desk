@@ -3,4 +3,4 @@ namespace HelpDesk.Application.Common.Authentication;
 public sealed record UserIdentity(
     Guid Id,
     string Email,
-    IEnumerable<string> Roles);
+    string Role);

@@ -1,11 +1,4 @@
-export const USER_ROLES = [
-  "Admin",
-  "ITSupportSpecialist",
-  "Manager",
-  "Employee",
-] as const;
-
-export type UserRole = (typeof USER_ROLES)[number];
+import type { UserRole } from "@/features/auth/authorization/roles";
 
 export interface User {
   id: string;
@@ -13,7 +6,7 @@ export interface User {
   lastName: string;
   email: string;
   isActive: boolean;
-  roles: string[];
+  role: UserRole;
 }
 
 export interface GetUsersRequest {
@@ -39,7 +32,7 @@ export interface CreateUserRequest {
   lastName: string;
   email: string;
   password: string;
-  roles: string[];
+  role: UserRole;
 }
 
 export interface UpdateUserRequest {
@@ -47,5 +40,5 @@ export interface UpdateUserRequest {
   lastName: string;
   email: string;
   isActive: boolean;
-  roles: string[];
+  role: UserRole;
 }

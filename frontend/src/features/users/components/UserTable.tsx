@@ -8,6 +8,7 @@ import {
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ROLE_LABELS } from "@/features/auth/authorization/roles";
 import { cn } from "@/lib/utils";
 import type { User } from "../types/user";
 
@@ -18,13 +19,6 @@ interface UserTableProps {
   onDeactivate: (user: User) => void;
   onReactivate: (user: User) => void;
 }
-
-const roleLabels: Record<string, string> = {
-  Admin: "Admin",
-  ITSupportSpecialist: "IT Support Agent",
-  Manager: "Manager",
-  Employee: "Employee",
-};
 
 export function UserTable({
   users,
@@ -66,7 +60,7 @@ export function UserTable({
                   <UserIdentity user={user} />
                 </td>
                 <td className="px-5 py-4">
-                  <RoleList roles={user.roles} />
+                  <RoleBadge role={user.role} />
                 </td>
                 <td className="px-5 py-4">
                   <StatusBadge active={user.isActive} />
@@ -100,7 +94,7 @@ export function UserTable({
               />
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <RoleList roles={user.roles} />
+              <RoleBadge role={user.role} />
               <StatusBadge active={user.isActive} />
             </div>
           </div>
@@ -128,15 +122,11 @@ function UserIdentity({ user }: { user: User }) {
   );
 }
 
-function RoleList({ roles }: { roles: string[] }) {
+function RoleBadge({ role }: { role: User["role"] }) {
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {roles.map((role) => (
-        <span className="rounded-md bg-secondary px-2 py-1 text-xs font-medium text-secondary-foreground" key={role}>
-          {roleLabels[role] ?? role}
-        </span>
-      ))}
-    </div>
+    <span className="rounded-md bg-secondary px-2 py-1 text-xs font-medium text-secondary-foreground">
+      {ROLE_LABELS[role]}
+    </span>
   );
 }
 

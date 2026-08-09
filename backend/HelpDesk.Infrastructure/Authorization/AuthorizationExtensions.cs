@@ -13,6 +13,9 @@ public static class AuthorizationExtensions
             options.AddPolicy(
                 Policies.AdminOnly,
                 policy => policy.RequireRole(Roles.Admin));
+            options.AddPolicy(
+                Policies.Reporting,
+                policy => policy.RequireRole(Roles.Admin, Roles.Manager));
         });
 
         return services;

@@ -11,6 +11,7 @@ public sealed class Ticket
     private readonly List<TicketHistory> _history = [];
     private readonly List<TicketAssignmentHistory> _assignmentHistory = [];
     private readonly List<TicketInternalNote> _internalNotes = [];
+    private readonly List<TicketAttachment> _attachments = [];
 
     private Ticket() { }
 
@@ -27,10 +28,13 @@ public sealed class Ticket
     public bool IsCancelled { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
     public DateTime UpdatedAtUtc { get; private set; }
+    public DateTime? ResolvedAtUtc { get; private set; }
+    public DateTime? ClosedAtUtc { get; private set; }
     public byte[] RowVersion { get; private set; } = [];
     public IReadOnlyCollection<TicketHistory> History => _history;
     public IReadOnlyCollection<TicketAssignmentHistory> AssignmentHistory => _assignmentHistory;
     public IReadOnlyCollection<TicketInternalNote> InternalNotes => _internalNotes;
+    public IReadOnlyCollection<TicketAttachment> Attachments => _attachments;
 
     public static Ticket Create(Guid creatorId, string reference, string title, string description,
         TicketCategory category, TicketPriority priority, DateTime occurredAtUtc)
@@ -60,7 +64,16 @@ public sealed class Ticket
     {
         EnsureActive();
         if (Status == status) return;
-        var previous = Status; Status = status; Touch(occurredAtUtc);
+        var previous = Status;
+        Status = status;
+        if (status == TicketStatus.Resolved)
+            ResolvedAtUtc ??= occurredAtUtc;
+        if (status == TicketStatus.Closed)
+        {
+            ResolvedAtUtc ??= occurredAtUtc;
+            ClosedAtUtc ??= occurredAtUtc;
+        }
+        Touch(occurredAtUtc);
         RecordHistory(actorId, "Status changed", previous.ToString(), status.ToString(), occurredAtUtc);
     }
 
@@ -100,9 +113,66 @@ public sealed class Ticket
         return note;
     }
 
+    public TicketHistory RecordComment(
+        Guid actorId,
+        Guid commentId,
+        bool isReply,
+        DateTime occurredAtUtc)
+    {
+        EnsureActive();
+        if (Status == TicketStatus.Closed)
+            throw new DomainRuleException("A closed ticket cannot receive new comments.");
+
+        Touch(occurredAtUtc);
+        RecordHistory(
+            actorId,
+            isReply ? "Reply added" : "Comment added",
+            null,
+            commentId.ToString(),
+            occurredAtUtc);
+
+        return _history[^1];
+    }
+
+    public TicketAttachment AddAttachment(
+        Guid uploaderUserId,
+        string originalFileName,
+        string storageKey,
+        string contentType,
+        string extension,
+        long sizeBytes,
+        string sha256Hash,
+        DateTime occurredAtUtc)
+    {
+        EnsureActive();
+        if (Status == TicketStatus.Closed)
+            throw new DomainRuleException("A closed ticket cannot receive new attachments.");
+
+        var attachment = TicketAttachment.Create(
+            Id,
+            uploaderUserId,
+            originalFileName,
+            storageKey,
+            contentType,
+            extension,
+            sizeBytes,
+            sha256Hash,
+            occurredAtUtc);
+        _attachments.Add(attachment);
+        Touch(occurredAtUtc);
+        RecordHistory(
+            uploaderUserId,
+            "Attachment uploaded",
+            null,
+            $"{attachment.Id}: {attachment.OriginalFileName}",
+            occurredAtUtc);
+        return attachment;
+    }
+
     public void Cancel(Guid actorId, DateTime occurredAtUtc)
     {
-        EnsureActive(); IsCancelled = true; Status = TicketStatus.Closed; Touch(occurredAtUtc);
+        EnsureActive(); IsCancelled = true; Status = TicketStatus.Closed;
+        ClosedAtUtc ??= occurredAtUtc; Touch(occurredAtUtc);
         RecordHistory(actorId, "Cancelled", null, TicketStatus.Closed.ToString(), occurredAtUtc);
     }
 

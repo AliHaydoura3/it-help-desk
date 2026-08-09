@@ -6,8 +6,9 @@ import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ROLE_DESCRIPTIONS, ROLE_LABELS, USER_ROLES } from "@/features/auth/authorization/roles";
 import { cn } from "@/lib/utils";
-import { USER_ROLES, type User } from "../types/user";
+import type { User } from "../types/user";
 import {
   createUserSchema,
   updateUserSchema,
@@ -22,13 +23,6 @@ interface UserFormDialogProps {
   onSubmit: (values: UserFormData) => Promise<void>;
 }
 
-const roleLabels: Record<string, string> = {
-  Admin: "Administrator",
-  ITSupportSpecialist: "IT Support Agent",
-  Manager: "Manager",
-  Employee: "Employee",
-};
-
 export function UserFormDialog({
   user,
   open,
@@ -42,7 +36,6 @@ export function UserFormDialog({
     register,
     handleSubmit,
     reset,
-    setValue,
     watch,
     formState: { errors },
   } = useForm<UserFormData>({
@@ -52,12 +45,12 @@ export function UserFormDialog({
       lastName: "",
       email: "",
       password: "",
-      roles: ["Employee"],
+      role: "Employee",
       isActive: true,
     },
   });
 
-  const selectedRoles = watch("roles");
+  const selectedRole = watch("role");
 
   useEffect(() => {
     if (!open) return;
@@ -69,7 +62,7 @@ export function UserFormDialog({
             lastName: user.lastName,
             email: user.email,
             password: "",
-            roles: user.roles,
+            role: user.role,
             isActive: user.isActive,
           }
         : {
@@ -77,7 +70,7 @@ export function UserFormDialog({
             lastName: "",
             email: "",
             password: "",
-            roles: ["Employee"],
+            role: "Employee",
             isActive: true,
           },
     );
@@ -96,14 +89,6 @@ export function UserFormDialog({
   }, [isPending, onClose, open]);
 
   if (!open) return null;
-
-  function toggleRole(role: string) {
-    const nextRoles = selectedRoles.includes(role)
-      ? selectedRoles.filter((selectedRole) => selectedRole !== role)
-      : [...selectedRoles, role];
-
-    setValue("roles", nextRoles, { shouldDirty: true, shouldValidate: true });
-  }
 
   return (
     <div
@@ -188,13 +173,13 @@ export function UserFormDialog({
             )}
 
             <fieldset>
-              <legend className="text-sm font-medium">Roles</legend>
+              <legend className="text-sm font-medium">Role</legend>
               <p className="mt-1 text-xs text-muted-foreground">
-                Select one or more roles for this account.
+                Each account has exactly one role. Higher access includes the employee baseline.
               </p>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 {USER_ROLES.map((role) => {
-                  const checked = selectedRoles.includes(role);
+                  const checked = selectedRole === role;
                   return (
                     <label
                       className={cn(
@@ -206,19 +191,24 @@ export function UserFormDialog({
                       key={role}
                     >
                       <input
-                        checked={checked}
                         className="size-4 accent-primary"
-                        onChange={() => toggleRole(role)}
-                        type="checkbox"
+                        type="radio"
+                        value={role}
+                        {...register("role")}
                       />
-                      {roleLabels[role]}
+                      <span>
+                        <span className="block font-medium">{ROLE_LABELS[role]}</span>
+                        <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">
+                          {ROLE_DESCRIPTIONS[role]}
+                        </span>
+                      </span>
                     </label>
                   );
                 })}
               </div>
-              {errors.roles && (
+              {errors.role && (
                 <p className="mt-2 text-sm text-destructive">
-                  {errors.roles.message}
+                  {errors.role.message}
                 </p>
               )}
             </fieldset>

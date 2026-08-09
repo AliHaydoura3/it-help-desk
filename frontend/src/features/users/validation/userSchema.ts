@@ -1,11 +1,12 @@
 import { z } from "zod";
+import { USER_ROLES } from "@/features/auth/authorization/roles";
 
 const userFields = z.object({
   firstName: z.string().trim().min(1, "First name is required").max(100),
   lastName: z.string().trim().min(1, "Last name is required").max(100),
   email: z.string().trim().email("Enter a valid email address"),
   password: z.string(),
-  roles: z.array(z.string()).min(1, "Select at least one role"),
+  role: z.enum(USER_ROLES, "Select a role"),
   isActive: z.boolean(),
 });
 

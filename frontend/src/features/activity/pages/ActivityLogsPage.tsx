@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getActivityLogs } from "../api/activityLogs";
+import { NotificationBell } from "@/features/communication/components/NotificationBell";
 
 export default function ActivityLogsPage() {
   const [page, setPage] = useState(1);
@@ -18,7 +19,10 @@ export default function ActivityLogsPage() {
   return (
     <main className="min-h-screen bg-muted/35 px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-6xl">
-        <Button render={<Link to="/users" />} variant="ghost"><ArrowLeft /> Back to users</Button>
+        <div className="flex items-center justify-between">
+          <Button render={<Link to="/users" />} variant="ghost"><ArrowLeft /> Back to users</Button>
+          <NotificationBell />
+        </div>
         <div className="mt-5 flex items-center gap-4">
           <div className="flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground"><History className="size-5" /></div>
           <div>

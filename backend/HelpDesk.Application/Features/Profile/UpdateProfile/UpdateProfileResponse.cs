@@ -5,4 +5,4 @@ public sealed record UpdateProfileResponse(
     string FirstName,
     string LastName,
     string Email,
-    IReadOnlyList<string> Roles);
+    string Role);

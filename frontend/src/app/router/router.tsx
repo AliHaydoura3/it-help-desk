@@ -4,6 +4,8 @@ import ProtectedRoute from "./ProtectedRoute";
 import AdminRoute from "./AdminRoute";
 import GuestRoute from "./GuestRoute";
 import RoleIndexRoute from "./RoleIndexRoute";
+import ReportingRoute from "./ReportingRoute";
+import LazyReportsPage from "./LazyReportsPage";
 
 import LoginPage from "@/features/auth/pages/LoginPage";
 import DashboardPage from "@/features/dashboard/pages/DashboardPage";
@@ -13,6 +15,8 @@ import ResetPasswordPage from "@/features/auth/pages/ResetPasswordPage";
 import ProfilePage from "@/features/profile/pages/ProfilePage";
 import ActivityLogsPage from "@/features/activity/pages/ActivityLogsPage";
 import TicketsPage from "@/features/tickets/pages/TicketsPage";
+import NotificationsPage from "@/features/communication/pages/NotificationsPage";
+import LazyAdminPage from "./LazyAdminPage";
 
 export const router = createBrowserRouter([
   {
@@ -52,8 +56,25 @@ export const router = createBrowserRouter([
         element: <TicketsPage />,
       },
       {
+        path: "/notifications",
+        element: <NotificationsPage />,
+      },
+      {
+        element: <ReportingRoute />,
+        children: [
+          {
+            path: "/reports",
+            element: <LazyReportsPage />,
+          },
+        ],
+      },
+      {
         element: <AdminRoute />,
         children: [
+          {
+            path: "/admin/:section?",
+            element: <LazyAdminPage />,
+          },
           {
             path: "/users",
             element: <DashboardPage />,

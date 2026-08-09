@@ -1,12 +1,23 @@
 using System.Text.Json.Serialization;
 using HelpDesk.Api.Exceptions;
 using HelpDesk.Application;
-using HelpDesk.Application.Common.Authorization;
 using HelpDesk.Infrastructure;
 using HelpDesk.Infrastructure.Identity.Seeding;
 using HelpDesk.Api.Middleware;
+using HelpDesk.Api.Notifications;
+using HelpDesk.Application.Abstractions.Communication;
+using Microsoft.AspNetCore.Http.Features;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var configuredAttachmentLimit = builder.Configuration.GetValue<long?>(
+    "Attachments:MaximumFileSizeBytes") ?? 10 * 1024 * 1024;
+var attachmentFormLimit = Math.Clamp(
+    configuredAttachmentLimit,
+    1024,
+    25 * 1024 * 1024) + 1024 * 1024;
+builder.Services.Configure<FormOptions>(options =>
+    options.MultipartBodyLengthLimit = attachmentFormLimit);
 
 builder.Services.AddControllers().AddJsonOptions(options =>
 {
@@ -15,6 +26,10 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 });
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<INotificationRealtimePublisher,
+    SignalRNotificationRealtimePublisher>();
+builder.Services.AddHostedService<NotificationDeliveryWorker>();
 
 
 builder.Services
@@ -28,7 +43,8 @@ builder.Services.AddCors(options =>
         policy
             .WithOrigins("http://localhost:5173")
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 
@@ -52,14 +68,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
-app.MapGet("/admin", () =>
-{
-    return Results.Ok(new
-    {
-        Message = "Welcome, Admin!"
-    });
-})
-.RequireAuthorization(Policies.AdminOnly);
+app.MapHub<NotificationHub>("/hubs/notifications");
 
 app.Run();

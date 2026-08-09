@@ -1,4 +1,5 @@
 import type { AuthUser } from "../types/auth";
+import { isUserRole, USER_ROLES } from "../authorization/roles";
 
 const ROLE_CLAIM =
   "http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
@@ -24,6 +25,10 @@ export function parseAccessToken(token: string | null): AuthUser | null {
       .padEnd(Math.ceil(encodedPayload.length / 4) * 4, "=");
     const payload = JSON.parse(atob(base64)) as JwtPayload;
     const roleClaim = payload[ROLE_CLAIM] ?? payload.role ?? [];
+    const claimedRoles = Array.isArray(roleClaim) ? roleClaim : [roleClaim];
+    const role = USER_ROLES.find((candidate) => claimedRoles.includes(candidate));
+
+    if (!role || !isUserRole(role)) return null;
 
     return {
       id:
@@ -31,7 +36,7 @@ export function parseAccessToken(token: string | null): AuthUser | null {
         payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] ??
         "",
       email: payload.email ?? "Administrator",
-      roles: Array.isArray(roleClaim) ? roleClaim : [roleClaim],
+      role,
     };
   } catch {
     return null;

@@ -1,3 +1,5 @@
+import type { UserRole } from "../authorization/roles";
+
 export interface LoginRequest {
   email: string;
   password: string;
@@ -12,5 +14,5 @@ export interface LoginResponse {
 export interface AuthUser {
   id: string;
   email: string;
-  roles: string[];
+  role: UserRole;
 }

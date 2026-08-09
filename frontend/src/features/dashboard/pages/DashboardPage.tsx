@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import {
   Activity,
+  BarChart3,
+  Bell,
   ChevronLeft,
   ChevronRight,
   LogOut,
   Menu,
   Search,
+  Gauge,
   ShieldCheck,
   UserRound,
   UserRoundCheck,
@@ -34,6 +37,7 @@ import {
 } from "@/features/users/hooks/useUsers";
 import type { User } from "@/features/users/types/user";
 import { getApiErrorMessage } from "@/features/users/utils/getApiErrorMessage";
+import { NotificationBell } from "@/features/communication/components/NotificationBell";
 import type { UserFormData } from "@/features/users/validation/userSchema";
 
 type StatusFilter = "all" | "active" | "inactive";
@@ -111,7 +115,7 @@ export default function DashboardPage() {
             lastName: values.lastName,
             email: values.email,
             isActive: values.isActive,
-            roles: values.roles,
+            role: values.role,
           },
         });
         toast.success("User updated successfully.");
@@ -121,7 +125,7 @@ export default function DashboardPage() {
           lastName: values.lastName,
           email: values.email,
           password: values.password,
-          roles: values.roles,
+          role: values.role,
         });
         toast.success("User created successfully.");
       }
@@ -155,7 +159,7 @@ export default function DashboardPage() {
           lastName: user.lastName,
           email: user.email,
           isActive: true,
-          roles: user.roles,
+          role: user.role,
         },
       });
       toast.success("User reactivated.");
@@ -174,14 +178,23 @@ export default function DashboardPage() {
           <div className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
             Management
           </div>
+          <Link className="mb-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" to="/admin">
+            <Gauge className="size-4" /> System overview
+          </Link>
           <div className="flex items-center gap-3 rounded-xl bg-primary px-3 py-2.5 text-sm font-medium text-primary-foreground shadow-sm">
             <Users className="size-4" /> Users
           </div>
           <Link className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" to="/activity-logs">
             <Activity className="size-4" /> Activity logs
           </Link>
+          <Link className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" to="/reports">
+            <BarChart3 className="size-4" /> Reports
+          </Link>
           <Link className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" to="/tickets">
             <Activity className="size-4" /> Tickets
+          </Link>
+          <Link className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" to="/notifications">
+            <Bell className="size-4" /> Notifications
           </Link>
         </nav>
         <div className="border-t p-3">
@@ -202,10 +215,14 @@ export default function DashboardPage() {
               <Button aria-label="Close navigation" onClick={() => setMobileMenuOpen(false)} size="icon" variant="ghost"><X /></Button>
             </div>
             <nav className="px-3 py-5">
+              <Link className="mb-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted" to="/admin"><Gauge className="size-4" /> System overview</Link>
               <div className="flex items-center gap-3 rounded-xl bg-primary px-3 py-2.5 text-sm font-medium text-primary-foreground">
                 <Users className="size-4" /> Users
               </div>
               <Link className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted" to="/activity-logs"><Activity className="size-4" /> Activity logs</Link>
+              <Link className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted" to="/reports"><BarChart3 className="size-4" /> Reports</Link>
+              <Link className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted" to="/tickets"><Activity className="size-4" /> Tickets</Link>
+              <Link className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted" to="/notifications"><Bell className="size-4" /> Notifications</Link>
             </nav>
             <div className="px-3">
               <Link className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted" to="/profile"><UserRound className="size-4" /> My profile</Link>
@@ -224,6 +241,7 @@ export default function DashboardPage() {
             <p className="truncate text-sm font-medium">Administration</p>
           </div>
           <div className="flex items-center gap-3">
+            <NotificationBell />
             <div className="hidden text-right sm:block">
               <p className="max-w-52 truncate text-sm font-medium">{adminEmail}</p>
               <p className="text-xs text-muted-foreground">Administrator</p>
@@ -238,7 +256,7 @@ export default function DashboardPage() {
               <p className="text-sm font-medium text-muted-foreground">Access control</p>
               <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">User management</h1>
               <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                Create accounts, assign roles, and control access to the help desk.
+                Create accounts, assign one role, and control access to the help desk.
               </p>
             </div>
             <Button className="h-10 px-4" onClick={openCreateForm}>

@@ -6,4 +6,4 @@ public sealed record UpdateUserResponse(
     string LastName,
     string Email,
     bool IsActive,
-    IReadOnlyList<string> Roles);
+    string Role);

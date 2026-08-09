@@ -24,16 +24,15 @@ public sealed class ActivityLoggingMiddleware(RequestDelegate next)
         var dbContext = scope.ServiceProvider
             .GetRequiredService<ApplicationDbContext>();
 
+        var resource = context.Request.Path.Value ?? string.Empty;
         dbContext.UserActivityLogs.Add(new UserActivityLog
         {
             Id = Guid.NewGuid(),
             UserId = Guid.TryParse(userIdValue, out var userId) ? userId : null,
             UserEmail = email,
             Action = context.Request.Method,
-            Resource = context.Request.Path.Value ?? string.Empty,
-            ResourceId = context.Request.RouteValues.TryGetValue("id", out var id)
-                ? id?.ToString()
-                : null,
+            Resource = Truncate(resource, 100),
+            ResourceId = GetResourceId(context),
             IpAddress = context.Connection.RemoteIpAddress?.ToString(),
             Succeeded = context.Response.StatusCode < 400,
             OccurredAtUtc = DateTime.UtcNow
@@ -41,4 +40,17 @@ public sealed class ActivityLoggingMiddleware(RequestDelegate next)
 
         await dbContext.SaveChangesAsync(CancellationToken.None);
     }
+
+    private static string? GetResourceId(HttpContext context)
+    {
+        foreach (var key in new[] { "attachmentId", "ticketId", "notificationId", "id" })
+        {
+            if (context.Request.RouteValues.TryGetValue(key, out var value) && value is not null)
+                return Truncate(value.ToString()!, 100);
+        }
+        return null;
+    }
+
+    private static string Truncate(string value, int maximumLength) =>
+        value.Length <= maximumLength ? value : value[..maximumLength];
 }

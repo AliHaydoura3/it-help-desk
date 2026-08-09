@@ -7,7 +7,7 @@ public sealed record UpdateUserCommand(
     string LastName,
     string Email,
     bool IsActive,
-    IEnumerable<string> Roles) : IRequest<UpdateUserResponse>
+    string Role) : IRequest<UpdateUserResponse>
 {
     public Guid Id { get; init; }
 

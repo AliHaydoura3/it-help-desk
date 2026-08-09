@@ -9,7 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/features/auth/hooks/useAuth";
+import { ROLE_LABELS } from "@/features/auth/authorization/roles";
 import { getApiErrorMessage } from "@/features/users/utils/getApiErrorMessage";
+import { NotificationBell } from "@/features/communication/components/NotificationBell";
 import { changePassword, getProfile, updateProfile } from "../api/profile";
 
 export default function ProfilePage() {
@@ -70,7 +72,10 @@ export default function ProfilePage() {
   return (
     <main className="min-h-screen bg-muted/35 px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-4xl">
-        <Button render={<Link to="/" />} variant="ghost"><ArrowLeft /> Back to workspace</Button>
+        <div className="flex items-center justify-between">
+          <Button render={<Link to="/" />} variant="ghost"><ArrowLeft /> Back to workspace</Button>
+          <NotificationBell />
+        </div>
         <div className="mt-5">
           <h1 className="text-3xl font-semibold tracking-tight">Your profile</h1>
           <p className="mt-2 text-sm text-muted-foreground">Manage your personal details and password.</p>
@@ -91,7 +96,7 @@ export default function ProfilePage() {
                     <Field label="Last name"><Input required maxLength={100} value={lastName} onChange={(event) => setLastName(event.target.value)} /></Field>
                   </div>
                   <Field label="Email address"><Input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></Field>
-                  <div className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">Roles: {profileQuery.data?.roles.join(", ")}</div>
+                  {profileQuery.data && <div className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">Role: {ROLE_LABELS[profileQuery.data.role]}</div>}
                   <Button disabled={updateMutation.isPending} type="submit">{updateMutation.isPending ? <LoaderCircle className="animate-spin" /> : <Save />} Save profile</Button>
                 </form>
               </CardContent>

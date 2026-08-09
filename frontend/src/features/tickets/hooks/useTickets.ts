@@ -1,17 +1,26 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { cancelTicket, changeTicketStatus, createTicket, getTicketHistory, getTickets, getTicketSummary, updateTicket } from "../api/tickets";
+import { cancelTicket, changeTicketStatus, createTicket, getTicket, getTicketHistory, getTickets, getTicketSummary, updateTicket } from "../api/tickets";
 import type { TicketFilters, TicketInput, TicketStatus } from "../types/ticket";
 
 const allTicketsKey = ["tickets"] as const;
 const ticketKeys = {
   all: allTicketsKey,
   list: (filters: TicketFilters) => [...allTicketsKey, "list", filters] as const,
+  detail: (id: string) => [...allTicketsKey, id, "detail"] as const,
   history: (id: string) => [...allTicketsKey, id, "history"] as const,
   summary: [...allTicketsKey, "summary"] as const,
 };
 
 export function useTickets(filters: TicketFilters) {
   return useQuery({ queryKey: ticketKeys.list(filters), queryFn: () => getTickets(filters), placeholderData: (previous) => previous });
+}
+
+export function useTicket(id: string | null) {
+  return useQuery({
+    queryKey: ticketKeys.detail(id ?? ""),
+    queryFn: () => getTicket(id!),
+    enabled: id !== null,
+  });
 }
 
 export function useTicketSummary(enabled: boolean) {

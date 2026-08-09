@@ -35,8 +35,22 @@ public sealed class UserSeeder(UserManager<ApplicationUser> userManager, IOption
 
         }
 
-        if (!await _userManager.IsInRoleAsync(admin, Roles.Admin))
+        var currentRoles = await _userManager.GetRolesAsync(admin);
+
+        if (currentRoles.Count != 1 || !currentRoles[0].Equals(Roles.Admin, StringComparison.OrdinalIgnoreCase))
         {
+            if (currentRoles.Count > 0)
+            {
+                var removeResult = await _userManager.RemoveFromRolesAsync(admin, currentRoles);
+                if (!removeResult.Succeeded)
+                {
+                    throw new InvalidOperationException(
+                        $"Failed to normalize the seeded administrator role.{Environment.NewLine}" +
+                        string.Join(Environment.NewLine,
+                            removeResult.Errors.Select(e => e.Description)));
+                }
+            }
+
             var roleResult = await _userManager.AddToRoleAsync(admin, Roles.Admin);
             if (!roleResult.Succeeded)
             {

@@ -1,19 +1,24 @@
 using HelpDesk.Application.Abstractions.Authentication;
 using HelpDesk.Application.Abstractions.Tickets;
+using HelpDesk.Application.Abstractions.Communication;
 using HelpDesk.Application.Common.Authorization;
 using HelpDesk.Application.Common.Exceptions;
 using HelpDesk.Application.Features.Tickets;
 using HelpDesk.Application.Features.Tickets.Workflow;
+using HelpDesk.Application.Common.Notifications;
 using HelpDesk.Domain;
 using HelpDesk.Infrastructure.Identity;
 using HelpDesk.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using HelpDesk.Application.Abstractions.Admin;
 
 namespace HelpDesk.Infrastructure.Tickets;
 
 public sealed class TicketWorkflowService(
     ApplicationDbContext dbContext,
-    ICurrentUser currentUser) : ITicketWorkflowService
+    ICurrentUser currentUser,
+    INotificationQueue notificationQueue,
+    IOperationalSettingsReader settingsReader) : ITicketWorkflowService
 {
     public async Task<TicketResponse> AssignAsync(
         AssignTicketCommand command,
@@ -24,8 +29,10 @@ public sealed class TicketWorkflowService(
         var ticket = await FindTicketAsync(command.TicketId, cancellationToken);
         var historyCount = ticket.History.Count;
         var assignmentCount = ticket.AssignmentHistory.Count;
+        var previousAgentId = ticket.AssignedToUserId;
         ticket.Assign(currentUser.UserId, command.AgentUserId, TicketAssignmentType.Manual, DateTime.UtcNow);
         TrackNewWorkflowEntries(ticket, historyCount, assignmentCount);
+        await QueueAssignmentAlertAsync(ticket, previousAgentId, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         return TicketMappings.ToResponse(ticket);
     }
@@ -35,6 +42,9 @@ public sealed class TicketWorkflowService(
         CancellationToken cancellationToken)
     {
         EnsureCanManageWorkflow();
+        var settings = await settingsReader.GetAsync(cancellationToken);
+        if (!settings.AutomaticAssignmentEnabled)
+            throw new InvalidOperationException("Automatic ticket assignment is disabled in system settings.");
         var ticket = await FindTicketAsync(command.TicketId, cancellationToken);
         var agentId = await BuildAssignableAgentDataQuery()
             .OrderBy(agent => agent.ActiveTicketCount)
@@ -45,8 +55,10 @@ public sealed class TicketWorkflowService(
             ?? throw new InvalidOperationException("No active support agents are available for assignment.");
         var historyCount = ticket.History.Count;
         var assignmentCount = ticket.AssignmentHistory.Count;
+        var previousAgentId = ticket.AssignedToUserId;
         ticket.Assign(currentUser.UserId, agentId, TicketAssignmentType.Automatic, DateTime.UtcNow);
         TrackNewWorkflowEntries(ticket, historyCount, assignmentCount);
+        await QueueAssignmentAlertAsync(ticket, previousAgentId, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         return TicketMappings.ToResponse(ticket);
     }
@@ -60,6 +72,13 @@ public sealed class TicketWorkflowService(
         var historyCount = ticket.History.Count;
         ticket.Escalate(currentUser.UserId, command.Level, command.Reason, DateTime.UtcNow);
         dbContext.TicketHistories.AddRange(ticket.History.Skip(historyCount));
+        await QueueTicketAlertAsync(
+            ticket,
+            NotificationType.TicketEscalated,
+            "Ticket escalated",
+            $"Ticket {ticket.ReferenceNumber} was escalated to {ticket.EscalationLevel}.",
+            BuildTicketParticipantIds(ticket).ToArray(),
+            cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         return TicketMappings.ToResponse(ticket);
     }
@@ -74,6 +93,16 @@ public sealed class TicketWorkflowService(
         var note = ticket.AddInternalNote(currentUser.UserId, command.Content, DateTime.UtcNow);
         dbContext.TicketHistories.AddRange(ticket.History.Skip(historyCount));
         dbContext.TicketInternalNotes.Add(note);
+        if (ticket.AssignedToUserId.HasValue)
+        {
+            await QueueTicketAlertAsync(
+                ticket,
+                NotificationType.InternalNoteAdded,
+                "Internal note added",
+                $"An internal note was added to ticket {ticket.ReferenceNumber}.",
+                [ticket.AssignedToUserId.Value],
+                cancellationToken);
+        }
         await dbContext.SaveChangesAsync(cancellationToken);
         return MapNote(note);
     }
@@ -172,16 +201,61 @@ public sealed class TicketWorkflowService(
             throw new KeyNotFoundException($"Ticket '{id}' does not exist.");
     }
 
-    private bool CanManage => currentUser.IsInRole(Roles.Admin) || currentUser.IsInRole(Roles.ITSupportSpecialist);
+    private bool CanManage => currentUser.HasPermission(Permission.ManageTicketWorkflow);
     private void EnsureCanManageWorkflow() { if (!CanManage) throw new ForbiddenAccessException("Only administrators and support agents can manage ticket workflow."); }
-    private void EnsureCanMonitorWorkflow() { if (!CanManage && !currentUser.IsInRole(Roles.Manager)) throw new ForbiddenAccessException("You cannot view assignment history."); }
-    private void EnsureCanUseInternalNotes() { if (!CanManage) throw new ForbiddenAccessException("Internal notes are restricted to administrators and support agents."); }
+    private void EnsureCanMonitorWorkflow() { if (!currentUser.HasPermission(Permission.ViewAssignmentHistory)) throw new ForbiddenAccessException("You cannot view assignment history."); }
+    private void EnsureCanUseInternalNotes() { if (!currentUser.HasPermission(Permission.UseInternalNotes)) throw new ForbiddenAccessException("Internal notes are restricted to administrators and support agents."); }
     private static InternalNoteResponse MapNote(TicketInternalNote note) => new(note.Id, note.AuthorUserId, note.Content, note.CreatedAtUtc);
     private void TrackNewWorkflowEntries(Ticket ticket, int previousHistoryCount, int previousAssignmentCount)
     {
         dbContext.TicketHistories.AddRange(ticket.History.Skip(previousHistoryCount));
         dbContext.TicketAssignmentHistories.AddRange(
             ticket.AssignmentHistory.Skip(previousAssignmentCount));
+    }
+
+    private Task QueueAssignmentAlertAsync(
+        Ticket ticket,
+        Guid? previousAgentId,
+        CancellationToken cancellationToken)
+    {
+        var isReassignment = previousAgentId.HasValue;
+        var recipients = BuildTicketParticipantIds(ticket).ToList();
+        if (previousAgentId.HasValue)
+            recipients.Add(previousAgentId.Value);
+
+        return QueueTicketAlertAsync(
+            ticket,
+            isReassignment
+                ? NotificationType.TicketReassigned
+                : NotificationType.TicketAssigned,
+            isReassignment ? "Ticket reassigned" : "Ticket assigned",
+            $"Ticket {ticket.ReferenceNumber} was {(isReassignment ? "reassigned" : "assigned")}.",
+            recipients,
+            cancellationToken);
+    }
+
+    private Task QueueTicketAlertAsync(
+        Ticket ticket,
+        NotificationType type,
+        string title,
+        string message,
+        IReadOnlyCollection<Guid> recipientIds,
+        CancellationToken cancellationToken) =>
+        notificationQueue.QueueAsync(
+            new NotificationMessage(
+                currentUser.UserId,
+                ticket.Id,
+                type,
+                title,
+                message,
+                recipientIds),
+            cancellationToken);
+
+    private static IEnumerable<Guid> BuildTicketParticipantIds(Ticket ticket)
+    {
+        yield return ticket.CreatedByUserId;
+        if (ticket.AssignedToUserId.HasValue)
+            yield return ticket.AssignedToUserId.Value;
     }
 
     private sealed class AssignableAgentData

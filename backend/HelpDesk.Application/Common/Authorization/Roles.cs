@@ -14,4 +14,7 @@ public static class Roles
         Manager,
         Employee
     ];
+
+    public static bool IsDefined(string role) =>
+        All.Contains(role, StringComparer.OrdinalIgnoreCase);
 }

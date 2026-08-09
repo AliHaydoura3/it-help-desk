@@ -1,4 +1,5 @@
 using FluentValidation;
+using HelpDesk.Application.Common.Authorization;
 
 namespace HelpDesk.Application.Features.Users.CreateUser;
 
@@ -23,7 +24,9 @@ public sealed class CreateUserValidator
             .NotEmpty()
             .MinimumLength(8);
 
-        RuleFor(x => x.Roles)
-            .NotEmpty();
+        RuleFor(x => x.Role)
+            .NotEmpty()
+            .Must(Roles.IsDefined)
+            .WithMessage("The selected role is invalid.");
     }
 }

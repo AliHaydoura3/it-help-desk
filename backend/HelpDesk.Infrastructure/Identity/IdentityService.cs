@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using HelpDesk.Application.Common.Authentication;
+using HelpDesk.Application.Common.Authorization;
 using HelpDesk.Application.Abstractions.Authentication;
 using HelpDesk.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
@@ -54,12 +55,12 @@ public sealed class IdentityService(
 
         await _userManager.ResetAccessFailedCountAsync(user);
 
-        var roles = await _userManager.GetRolesAsync(user);
+        var role = await GetSingleRoleAsync(user);
 
         return new UserIdentity(
             user.Id,
             user.Email!,
-            roles);
+            role);
     }
 
     public async Task<RefreshSession> CreateRefreshSessionAsync(
@@ -101,8 +102,8 @@ public sealed class IdentityService(
         if (user is null || !user.IsActive)
             return null;
 
-        var roles = await _userManager.GetRolesAsync(user);
-        var identity = new UserIdentity(user.Id, user.Email!, roles);
+        var role = await GetSingleRoleAsync(user);
+        var identity = new UserIdentity(user.Id, user.Email!, role);
         var (newToken, newEntity) = CreateRefreshToken(user.Id);
 
         existingToken.RevokedAtUtc = now;
@@ -184,14 +185,14 @@ public sealed class IdentityService(
         cancellationToken.ThrowIfCancellationRequested();
 
         var user = await FindUserByIdAsync(userId);
-        var roles = await _userManager.GetRolesAsync(user);
+        var role = await GetSingleRoleAsync(user);
 
         return new GetProfileResponse(
             user.Id,
             user.FirstName,
             user.LastName,
             user.Email!,
-            roles.ToArray());
+            role);
     }
 
     public async Task<UpdateProfileResponse> UpdateProfileAsync(
@@ -216,14 +217,14 @@ public sealed class IdentityService(
         if (!result.Succeeded)
             ThrowIdentityErrors(result);
 
-        var roles = await _userManager.GetRolesAsync(user);
+        var role = await GetSingleRoleAsync(user);
 
         return new UpdateProfileResponse(
             user.Id,
             user.FirstName,
             user.LastName,
             user.Email!,
-            roles.ToArray());
+            role);
     }
 
     public async Task ChangePasswordAsync(
@@ -266,11 +267,8 @@ public sealed class IdentityService(
         if (existingUser is not null)
             throw new InvalidOperationException("Email already exists.");
 
-        var roles = command.Roles
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-
-        await EnsureRolesExistAsync(roles, cancellationToken);
+        var role = GetCanonicalRole(command.Role);
+        await EnsureRoleExistsAsync(role, cancellationToken);
 
         var user = new ApplicationUser
         {
@@ -282,25 +280,29 @@ public sealed class IdentityService(
             IsActive = true
         };
 
-        var createResult = await _userManager.CreateAsync(
-            user,
-            command.Password);
+        await using var transaction = await _dbContext.Database
+            .BeginTransactionAsync(cancellationToken);
+
+        var createResult = await _userManager.CreateAsync(user, command.Password);
 
         if (!createResult.Succeeded)
             ThrowIdentityErrors(createResult);
 
-        var roleResult = await _userManager.AddToRolesAsync(
-            user,
-            roles);
+        var roleResult = await _userManager.AddToRoleAsync(user, role);
 
         if (!roleResult.Succeeded)
             ThrowIdentityErrors(roleResult);
 
-        return new CreateUserResponse(
+        var response = new CreateUserResponse(
             user.Id,
             user.FirstName,
             user.LastName,
-            user.Email!);
+            user.Email!,
+            role);
+
+        await transaction.CommitAsync(cancellationToken);
+
+        return response;
     }
 
     public async Task<GetUsersResponse> GetUsersAsync(
@@ -317,7 +319,7 @@ public sealed class IdentityService(
         var inactiveCount = await allUsers.CountAsync(
             user => !user.IsActive,
             cancellationToken);
-        var administrators = await _userManager.GetUsersInRoleAsync("Admin");
+        var administrators = await _userManager.GetUsersInRoleAsync(Roles.Admin);
         var administratorCount = administrators.Count(
             user => user.Id != request.CurrentUserId);
 
@@ -396,11 +398,11 @@ public sealed class IdentityService(
         if (userWithEmail is not null && userWithEmail.Id != user.Id)
             throw new InvalidOperationException("Email already exists.");
 
-        var requestedRoles = command.Roles
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+        var requestedRole = GetCanonicalRole(command.Role);
+        await EnsureRoleExistsAsync(requestedRole, cancellationToken);
 
-        await EnsureRolesExistAsync(requestedRoles, cancellationToken);
+        await using var transaction = await _dbContext.Database
+            .BeginTransactionAsync(cancellationToken);
 
         user.FirstName = command.FirstName;
         user.LastName = command.LastName;
@@ -413,35 +415,32 @@ public sealed class IdentityService(
         if (!updateResult.Succeeded)
             ThrowIdentityErrors(updateResult);
 
-        var currentRoles = await _userManager.GetRolesAsync(user);
-        var rolesToRemove = currentRoles.Except(
-            requestedRoles,
-            StringComparer.OrdinalIgnoreCase);
-        var rolesToAdd = requestedRoles.Except(
-            currentRoles,
-            StringComparer.OrdinalIgnoreCase);
+        var currentRole = await GetSingleRoleAsync(user);
 
-        var removeResult = await _userManager.RemoveFromRolesAsync(
-            user,
-            rolesToRemove);
+        if (!currentRole.Equals(requestedRole, StringComparison.OrdinalIgnoreCase))
+        {
+            var removeResult = await _userManager.RemoveFromRoleAsync(user, currentRole);
 
-        if (!removeResult.Succeeded)
-            ThrowIdentityErrors(removeResult);
+            if (!removeResult.Succeeded)
+                ThrowIdentityErrors(removeResult);
 
-        var addResult = await _userManager.AddToRolesAsync(user, rolesToAdd);
+            var addResult = await _userManager.AddToRoleAsync(user, requestedRole);
 
-        if (!addResult.Succeeded)
-            ThrowIdentityErrors(addResult);
+            if (!addResult.Succeeded)
+                ThrowIdentityErrors(addResult);
+        }
 
-        var roles = await _userManager.GetRolesAsync(user);
-
-        return new UpdateUserResponse(
+        var response = new UpdateUserResponse(
             user.Id,
             user.FirstName,
             user.LastName,
             user.Email!,
             user.IsActive,
-            roles.ToArray());
+            requestedRole);
+
+        await transaction.CommitAsync(cancellationToken);
+
+        return response;
     }
 
     public async Task DeleteUserAsync(
@@ -472,23 +471,23 @@ public sealed class IdentityService(
             $"User '{id}' does not exist.");
     }
 
-    private async Task EnsureRolesExistAsync(
-        IEnumerable<string> roles,
+    private async Task EnsureRoleExistsAsync(
+        string role,
         CancellationToken cancellationToken)
     {
-        foreach (var role in roles)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
+        cancellationToken.ThrowIfCancellationRequested();
 
-            if (!await _roleManager.RoleExistsAsync(role))
-                throw new KeyNotFoundException(
-                    $"Role '{role}' does not exist.");
-        }
+        if (!await _roleManager.RoleExistsAsync(role))
+            throw new KeyNotFoundException($"Role '{role}' does not exist.");
     }
+
+    private static string GetCanonicalRole(string role) =>
+        Roles.All.Single(knownRole =>
+            knownRole.Equals(role, StringComparison.OrdinalIgnoreCase));
 
     private async Task<GetUserResponse> MapUserAsync(ApplicationUser user)
     {
-        var roles = await _userManager.GetRolesAsync(user);
+        var role = await GetSingleRoleAsync(user);
 
         return new GetUserResponse(
             user.Id,
@@ -496,7 +495,21 @@ public sealed class IdentityService(
             user.LastName,
             user.Email!,
             user.IsActive,
-            roles.ToArray());
+            role);
+    }
+
+    private async Task<string> GetSingleRoleAsync(ApplicationUser user)
+    {
+        var roles = await _userManager.GetRolesAsync(user);
+
+        return roles.Count switch
+        {
+            1 => roles[0],
+            0 => throw new InvalidOperationException(
+                $"User '{user.Id}' does not have an assigned role."),
+            _ => throw new InvalidOperationException(
+                $"User '{user.Id}' has multiple roles. Each user must have exactly one role.")
+        };
     }
 
     private static void ThrowIdentityErrors(IdentityResult result)

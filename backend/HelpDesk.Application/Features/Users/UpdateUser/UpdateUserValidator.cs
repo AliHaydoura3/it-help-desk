@@ -1,4 +1,5 @@
 using FluentValidation;
+using HelpDesk.Application.Common.Authorization;
 
 namespace HelpDesk.Application.Features.Users.UpdateUser;
 
@@ -21,7 +22,9 @@ public sealed class UpdateUserValidator : AbstractValidator<UpdateUserCommand>
             .NotEmpty()
             .EmailAddress();
 
-        RuleFor(x => x.Roles)
-            .NotEmpty();
+        RuleFor(x => x.Role)
+            .NotEmpty()
+            .Must(Roles.IsDefined)
+            .WithMessage("The selected role is invalid.");
     }
 }

@@ -1,5 +1,7 @@
 import type { AuthUser } from "../types/auth";
 
 export function getDefaultRoute(user: AuthUser | null): string {
-  return user?.roles.includes("Admin") ? "/users" : "/tickets";
+  if (user?.role === "Admin") return "/admin";
+  if (user?.role === "Manager") return "/reports";
+  return "/tickets";
 }

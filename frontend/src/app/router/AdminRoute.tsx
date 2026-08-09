@@ -4,7 +4,7 @@ import { useAuth } from "@/features/auth/hooks/useAuth";
 export default function AdminRoute() {
   const { user } = useAuth();
 
-  if (!user?.roles.includes("Admin")) {
+  if (user?.role !== "Admin") {
     return <Navigate to="/access-denied" replace />;
   }
 

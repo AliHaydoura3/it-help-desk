@@ -5,6 +5,10 @@ export async function getTickets(filters: TicketFilters): Promise<TicketListResp
   return (await apiClient.get<TicketListResponse>("/tickets", { params: filters })).data;
 }
 
+export async function getTicket(id: string): Promise<Ticket> {
+  return (await apiClient.get<Ticket>(`/tickets/${id}`)).data;
+}
+
 export async function createTicket(input: TicketInput): Promise<Ticket> {
   return (await apiClient.post<Ticket>("/tickets", input)).data;
 }
