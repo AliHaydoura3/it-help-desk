@@ -5,20 +5,12 @@ import {
   FileChartColumn,
   Gauge,
   Headphones,
-  LogOut,
-  ShieldCheck,
-  TicketCheck,
-  UserRound,
-  Users,
 } from "lucide-react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-import { logoutSession } from "@/features/auth/api/logout";
 import { ROLE_LABELS, type UserRole } from "@/features/auth/authorization/roles";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { NotificationBell } from "@/features/communication/components/NotificationBell";
 import { getApiErrorMessage } from "@/features/users/utils/getApiErrorMessage";
 import { AgentPerformancePanel } from "../components/AgentPerformancePanel";
 import { EmployeeActivityPanel } from "../components/EmployeeActivityPanel";
@@ -55,7 +47,6 @@ type ReportingTab = (typeof TABS)[number]["value"];
 
 export default function ReportsPage() {
   const auth = useAuth();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const defaults = useMemo(getDefaultReportDates, []);
   const [from, setFrom] = useState(defaults.from);
@@ -94,26 +85,8 @@ export default function ReportsPage() {
     }
   }
 
-  async function logout() {
-    try { await logoutSession(); } catch { /* local logout continues */ }
-    auth.logout();
-    navigate("/login");
-  }
-
   return (
-    <div className="min-h-screen bg-muted/35">
-      <header className="border-b bg-card">
-        <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6">
-          <div className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground"><ShieldCheck className="size-5" /></div>
-          <div className="mr-auto"><p className="text-sm font-semibold">IT Help Desk</p><p className="text-xs text-muted-foreground">Reporting center</p></div>
-          <Button aria-label="Tickets" render={<Link to="/tickets" />} variant="ghost"><TicketCheck /> <span className="hidden xl:inline">Tickets</span></Button>
-          {auth.user?.role === "Admin" && <Button aria-label="Users" render={<Link to="/users" />} variant="ghost"><Users /> <span className="hidden xl:inline">Users</span></Button>}
-          <NotificationBell />
-          <Button render={<Link to="/profile" />} variant="ghost"><UserRound /> <span className="hidden sm:inline">Profile</span></Button>
-          <Button aria-label="Sign out" onClick={logout} size="icon" variant="ghost"><LogOut /></Button>
-        </div>
-      </header>
-
+    <div>
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
         <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
           <div>

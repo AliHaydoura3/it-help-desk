@@ -1,5 +1,4 @@
 import { Navigate, useParams } from "react-router-dom";
-import { AdminShell } from "../components/AdminShell";
 import { AdminOverview } from "../components/AdminOverview";
 import { CategoryManagement } from "../components/CategoryManagement";
 import { RoleManagement } from "../components/RoleManagement";
@@ -13,5 +12,5 @@ export default function AdminPage() {
     : section === "settings" ? <SystemSettingsPanel />
     : null;
   if (!content) return <Navigate replace to="/admin" />;
-  return <AdminShell>{content}</AdminShell>;
+  return <main className="mx-auto max-w-7xl px-4 py-7 sm:px-6 lg:px-8 lg:py-9">{content}</main>;
 }

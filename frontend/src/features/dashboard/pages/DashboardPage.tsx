@@ -1,31 +1,20 @@
 import { useEffect, useState } from "react";
 import {
   Activity,
-  BarChart3,
-  Bell,
   ChevronLeft,
   ChevronRight,
-  LogOut,
-  Menu,
   Search,
-  Gauge,
   ShieldCheck,
-  UserRound,
   UserRoundCheck,
   UserRoundPlus,
   Users,
   UserX,
-  X,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useAuth } from "@/features/auth/hooks/useAuth";
-import { logoutSession } from "@/features/auth/api/logout";
 import { DeactivateUserDialog } from "@/features/users/components/DeactivateUserDialog";
 import { UserFormDialog } from "@/features/users/components/UserFormDialog";
 import { UserTable } from "@/features/users/components/UserTable";
@@ -37,7 +26,6 @@ import {
 } from "@/features/users/hooks/useUsers";
 import type { User } from "@/features/users/types/user";
 import { getApiErrorMessage } from "@/features/users/utils/getApiErrorMessage";
-import { NotificationBell } from "@/features/communication/components/NotificationBell";
 import type { UserFormData } from "@/features/users/validation/userSchema";
 
 type StatusFilter = "all" | "active" | "inactive";
@@ -45,8 +33,6 @@ const EMPTY_USERS: User[] = [];
 const PAGE_SIZE = 10;
 
 export default function DashboardPage() {
-  const auth = useAuth();
-  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [pageNumber, setPageNumber] = useState(1);
@@ -54,7 +40,6 @@ export default function DashboardPage() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deactivatingUser, setDeactivatingUser] = useState<User | null>(null);
   const [reactivatingId, setReactivatingId] = useState<string | null>(null);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const debouncedSearch = useDebouncedValue(search, 300);
   const usersQuery = useUsers({
     pageNumber,
@@ -66,14 +51,6 @@ export default function DashboardPage() {
   const createMutation = useCreateUser();
   const updateMutation = useUpdateUser();
   const deactivateMutation = useDeactivateUser();
-  const adminEmail = auth.user?.email ?? "Administrator";
-  const adminInitials = adminEmail
-    .split("@")[0]
-    .split(/[._-]/)
-    .map((part) => part[0] ?? "")
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
 
   const users = usersQuery.data?.items ?? EMPTY_USERS;
 
@@ -84,16 +61,6 @@ export default function DashboardPage() {
       setPageNumber(totalPages);
     }
   }, [pageNumber, usersQuery.data?.totalPages]);
-
-  async function logout() {
-    try {
-      await logoutSession();
-    } catch {
-      // Local session cleanup must still happen if the API is unavailable.
-    }
-    auth.logout();
-    navigate("/login");
-  }
 
   function openCreateForm() {
     setEditingUser(null);
@@ -171,86 +138,8 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-muted/35">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r bg-card lg:flex">
-        <Brand />
-        <nav className="flex-1 px-3 py-5">
-          <div className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-            Management
-          </div>
-          <Link className="mb-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" to="/admin">
-            <Gauge className="size-4" /> System overview
-          </Link>
-          <div className="flex items-center gap-3 rounded-xl bg-primary px-3 py-2.5 text-sm font-medium text-primary-foreground shadow-sm">
-            <Users className="size-4" /> Users
-          </div>
-          <Link className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" to="/activity-logs">
-            <Activity className="size-4" /> Activity logs
-          </Link>
-          <Link className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" to="/reports">
-            <BarChart3 className="size-4" /> Reports
-          </Link>
-          <Link className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" to="/tickets">
-            <Activity className="size-4" /> Tickets
-          </Link>
-          <Link className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" to="/notifications">
-            <Bell className="size-4" /> Notifications
-          </Link>
-        </nav>
-        <div className="border-t p-3">
-          <Link className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" to="/profile">
-            <UserRound className="size-4" /> My profile
-          </Link>
-          <button className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" onClick={logout}>
-            <LogOut className="size-4" /> Sign out
-          </button>
-        </div>
-      </aside>
-
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-40 bg-foreground/30 lg:hidden" onClick={() => setMobileMenuOpen(false)}>
-          <aside className="h-full w-72 bg-card shadow-xl" onClick={(event) => event.stopPropagation()}>
-            <div className="flex items-center justify-between pr-3">
-              <Brand />
-              <Button aria-label="Close navigation" onClick={() => setMobileMenuOpen(false)} size="icon" variant="ghost"><X /></Button>
-            </div>
-            <nav className="px-3 py-5">
-              <Link className="mb-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted" to="/admin"><Gauge className="size-4" /> System overview</Link>
-              <div className="flex items-center gap-3 rounded-xl bg-primary px-3 py-2.5 text-sm font-medium text-primary-foreground">
-                <Users className="size-4" /> Users
-              </div>
-              <Link className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted" to="/activity-logs"><Activity className="size-4" /> Activity logs</Link>
-              <Link className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted" to="/reports"><BarChart3 className="size-4" /> Reports</Link>
-              <Link className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted" to="/tickets"><Activity className="size-4" /> Tickets</Link>
-              <Link className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted" to="/notifications"><Bell className="size-4" /> Notifications</Link>
-            </nav>
-            <div className="px-3">
-              <Link className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted" to="/profile"><UserRound className="size-4" /> My profile</Link>
-              <button className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted" onClick={logout}>
-                <LogOut className="size-4" /> Sign out
-              </button>
-            </div>
-          </aside>
-        </div>
-      )}
-
-      <div className="lg:pl-64">
-        <header className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/90 px-4 backdrop-blur sm:px-6 lg:px-8">
-          <Button aria-label="Open navigation" className="mr-3 lg:hidden" onClick={() => setMobileMenuOpen(true)} size="icon" variant="ghost"><Menu /></Button>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">Administration</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <NotificationBell />
-            <div className="hidden text-right sm:block">
-              <p className="max-w-52 truncate text-sm font-medium">{adminEmail}</p>
-              <p className="text-xs text-muted-foreground">Administrator</p>
-            </div>
-            <div className="flex size-9 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">{adminInitials || "A"}</div>
-          </div>
-        </header>
-
-        <main className="mx-auto max-w-7xl px-4 py-7 sm:px-6 lg:px-8 lg:py-9">
+    <>
+      <main className="mx-auto max-w-7xl px-4 py-7 sm:px-6 lg:px-8 lg:py-9">
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Access control</p>
@@ -329,8 +218,7 @@ export default function DashboardPage() {
               />
             )}
           </Card>
-        </main>
-      </div>
+      </main>
 
       <UserFormDialog
         isPending={createMutation.isPending || updateMutation.isPending}
@@ -348,7 +236,7 @@ export default function DashboardPage() {
         onConfirm={confirmDeactivation}
         user={deactivatingUser}
       />
-    </div>
+    </>
   );
 }
 
@@ -433,18 +321,6 @@ function useDebouncedValue<T>(value: T, delay: number): T {
   }, [delay, value]);
 
   return debouncedValue;
-}
-
-function Brand() {
-  return (
-    <div className="flex h-16 items-center gap-3 border-b px-5">
-      <div className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm"><ShieldCheck className="size-5" /></div>
-      <div>
-        <p className="text-sm font-semibold leading-tight">IT Help Desk</p>
-        <p className="text-xs text-muted-foreground">Management console</p>
-      </div>
-    </div>
-  );
 }
 
 function StatCard({

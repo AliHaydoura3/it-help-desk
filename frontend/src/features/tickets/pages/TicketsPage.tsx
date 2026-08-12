@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react";
-import { BarChart3, LogOut, Plus, Search, ShieldCheck, UserRound, Users } from "lucide-react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Plus, Search } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { logoutSession } from "@/features/auth/api/logout";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { NotificationBell } from "@/features/communication/components/NotificationBell";
 import { TicketConversationDialog } from "@/features/communication/components/TicketConversationDialog";
 import { getApiErrorMessage } from "@/features/users/utils/getApiErrorMessage";
 import { CancelTicketDialog } from "../components/CancelTicketDialog";
@@ -25,7 +23,6 @@ const PAGE_SIZE = 10;
 
 export default function TicketsPage() {
   const auth = useAuth();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -87,10 +84,7 @@ export default function TicketsPage() {
   async function changeStatus(ticket: Ticket, nextStatus: TicketStatus) {
     try { await mutations.changeStatus.mutateAsync({ id: ticket.id, status: nextStatus }); toast.success("Status updated."); } catch (error) { toast.error(getApiErrorMessage(error)); }
   }
-  async function logout() { try { await logoutSession(); } catch { /* local logout continues */ } auth.logout(); navigate("/login"); }
-
-  return <div className="min-h-screen bg-muted/35">
-    <header className="border-b bg-card"><div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-3 sm:gap-3 sm:px-6"><div className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground"><ShieldCheck className="size-5" /></div><div className="mr-auto hidden sm:block"><p className="text-sm font-semibold">IT Help Desk</p><p className="text-xs text-muted-foreground">Ticket workspace</p></div>{canViewReports(auth.user) && <Button aria-label="Reports" render={<Link to="/reports" />} variant="ghost"><BarChart3 /> <span className="hidden lg:inline">Reports</span></Button>}{auth.user?.role === "Admin" && <Button aria-label="Users" render={<Link to="/users" />} variant="ghost"><Users /> <span className="hidden lg:inline">Users</span></Button>}<NotificationBell /><Button aria-label="Profile" render={<Link to="/profile" />} variant="ghost"><UserRound /> <span className="hidden lg:inline">Profile</span></Button><Button aria-label="Sign out" onClick={logout} size="icon" variant="ghost"><LogOut /></Button></div></header>
+  return <div>
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="text-sm font-medium text-muted-foreground">{getWorkspaceLabel(auth.user?.role)}</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Support tickets</h1><p className="mt-2 text-sm text-muted-foreground">Create, track, and manage help desk requests.</p></div><Button className="h-10 px-4" onClick={() => { setEditing(null); setFormOpen(true); }}><Plus /> New ticket</Button></div>
 

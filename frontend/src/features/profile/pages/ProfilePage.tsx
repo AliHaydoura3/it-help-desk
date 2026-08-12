@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, KeyRound, LoaderCircle, Save, UserRound } from "lucide-react";
+import { KeyRound, LoaderCircle, Save, UserRound } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { ROLE_LABELS } from "@/features/auth/authorization/roles";
 import { getApiErrorMessage } from "@/features/users/utils/getApiErrorMessage";
-import { NotificationBell } from "@/features/communication/components/NotificationBell";
 import { changePassword, getProfile, updateProfile } from "../api/profile";
 
 export default function ProfilePage() {
@@ -70,13 +69,9 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="min-h-screen bg-muted/35 px-4 py-8 sm:px-6">
+    <main className="px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-4xl">
-        <div className="flex items-center justify-between">
-          <Button render={<Link to="/" />} variant="ghost"><ArrowLeft /> Back to workspace</Button>
-          <NotificationBell />
-        </div>
-        <div className="mt-5">
+        <div>
           <h1 className="text-3xl font-semibold tracking-tight">Your profile</h1>
           <p className="mt-2 text-sm text-muted-foreground">Manage your personal details and password.</p>
         </div>

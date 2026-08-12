@@ -1,11 +1,9 @@
-import { ArrowLeft, Bell, CheckCheck, Inbox, LoaderCircle } from "lucide-react";
+import { Bell, CheckCheck, Inbox, LoaderCircle } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { getDefaultRoute } from "@/features/auth/utils/getDefaultRoute";
-import { useAuth } from "@/features/auth/hooks/useAuth";
 import { getApiErrorMessage } from "@/features/users/utils/getApiErrorMessage";
 import { cn } from "@/lib/utils";
 import { useNotificationMutations, useNotifications } from "../hooks/useNotifications";
@@ -16,7 +14,6 @@ import { CommunicationPagination } from "../components/CommunicationPagination";
 const PAGE_SIZE = 12;
 
 export default function NotificationsPage() {
-  const auth = useAuth();
   const navigate = useNavigate();
   const [filter, setFilter] = useState<NotificationFilter>("all");
   const [page, setPage] = useState(1);
@@ -51,11 +48,9 @@ export default function NotificationsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-muted/35 px-4 py-8 sm:px-6">
+    <main className="px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl">
-        <Button render={<Link to={getDefaultRoute(auth.user)} />} variant="ghost"><ArrowLeft /> Back to workspace</Button>
-
-        <div className="mt-5 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div className="flex items-center gap-4">
             <div className="flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground"><Bell className="size-5" /></div>
             <div>
