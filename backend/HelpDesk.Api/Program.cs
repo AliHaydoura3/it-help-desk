@@ -6,7 +6,9 @@ using HelpDesk.Infrastructure.Identity.Seeding;
 using HelpDesk.Api.Middleware;
 using HelpDesk.Api.Notifications;
 using HelpDesk.Application.Abstractions.Communication;
+using HelpDesk.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -52,6 +54,9 @@ var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    await dbContext.Database.MigrateAsync();
+
     var seeder = scope.ServiceProvider
         .GetRequiredService<IdentitySeeder>();
 

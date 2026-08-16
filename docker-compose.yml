@@ -1,0 +1,70 @@
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    env_file: .env
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: ${MSSQL_PID:-Developer}
+      MSSQL_SA_PASSWORD: ${DB_SA_PASSWORD}
+      MSSQL_MEMORY_LIMIT_MB: ${SQL_MEMORY_LIMIT_MB:-2048}
+    volumes: [sqlserver-data:/var/opt/mssql]
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    restart: unless-stopped
+  database-init:
+    # SQL Server 2022 images include sqlcmd at /opt/mssql-tools18/bin.
+    # Use the same published image instead of the non-existent mssql-tools18 image.
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    env_file: .env
+    depends_on:
+      db: { condition: service_healthy }
+    volumes: [./docker:/scripts:ro]
+    entrypoint: ["/bin/bash", "/scripts/init-db.sh"]
+    restart: "no"
+  api:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    env_file: .env
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: Server=db,1433;Database=${DB_NAME};User Id=${DB_APP_USER};Password=${DB_APP_PASSWORD};Encrypt=${DB_ENCRYPT:-False};TrustServerCertificate=${DB_TRUST_SERVER_CERTIFICATE:-True}
+      Jwt__Key: ${JWT_KEY}
+      Jwt__Issuer: ${JWT_ISSUER}
+      Jwt__Audience: ${JWT_AUDIENCE}
+      Jwt__ExpiryMinutes: ${JWT_EXPIRY_MINUTES}
+      Jwt__RefreshTokenExpiryDays: ${JWT_REFRESH_TOKEN_EXPIRY_DAYS:-7}
+      Admin__Email: ${ADMIN_EMAIL}
+      Admin__Password: ${ADMIN_PASSWORD}
+      Admin__FirstName: ${ADMIN_FIRST_NAME}
+      Admin__LastName: ${ADMIN_LAST_NAME}
+      Smtp__Host: ${SMTP_HOST}
+      Smtp__Port: ${SMTP_PORT}
+      Smtp__Username: ${SMTP_USERNAME}
+      Smtp__Password: ${SMTP_PASSWORD}
+      Smtp__FromEmail: ${SMTP_FROM_EMAIL}
+      Smtp__FromName: ${SMTP_FROM_NAME}
+      Smtp__EnableSsl: ${SMTP_ENABLE_SSL}
+      Smtp__FrontendBaseUrl: ${PUBLIC_APP_URL:-http://localhost:8080}
+      AllowedHosts: ${ALLOWED_HOSTS:-*}
+      Attachments__StorageRootPath: /app/App_Data/attachments
+      Attachments__MaximumFileSizeBytes: ${ATTACHMENT_MAX_FILE_SIZE_BYTES:-10485760}
+      Attachments__MaximumFilesPerTicket: ${ATTACHMENT_MAX_FILES_PER_TICKET:-25}
+    volumes: [attachments-data:/app/App_Data/attachments]
+    depends_on:
+      database-init: { condition: service_completed_successfully }
+    restart: unless-stopped
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args: { VITE_API_URL: /api }
+    ports: ["${APP_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:80"]
+    depends_on:
+      api: { condition: service_started }
+    restart: unless-stopped
+volumes:
+  sqlserver-data:
+  attachments-data:
