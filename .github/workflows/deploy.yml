@@ -1,0 +1,31 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy: 
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to Azure VM
+        uses: appleboy/ssh-action@v1.2.2
+        with: 
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USERNAME }}
+          key: ${{secrets.VM_SSH_KEY }}
+          scripts: | 
+            set -e
+            echo "Starting deployment"
+            cd ~/it-help-desk
+            echo "Fetching latest code..."
+            git fetch origin main
+            echo "Resetting to latest main"
+            git reset --hard origin/main
+            echo "Building and starting containers..."
+            dcoker compose up -d --build
+            echo "Container status:"
+            docker compose ps
+            echo "Deplyment completed"
