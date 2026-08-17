@@ -43,7 +43,7 @@ export function UserTable({
 
   return (
     <>
-      <div className="hidden overflow-x-auto md:block">
+      <div className="hidden md:block">
         <table className="w-full text-left text-sm">
           <thead className="border-b bg-muted/35 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             <tr>

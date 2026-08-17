@@ -160,7 +160,7 @@ export default function DashboardPage() {
             <StatCard icon={ShieldCheck} label="Administrators" value={usersQuery.data?.administratorCount ?? 0} />
           </div>
 
-          <Card className="mt-6 gap-0 py-0 shadow-sm">
+          <Card className="mt-6 gap-0 overflow-visible py-0 shadow-sm">
             <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="relative w-full sm:max-w-sm">
                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />

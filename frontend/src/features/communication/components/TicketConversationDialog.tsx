@@ -92,9 +92,9 @@ export function TicketConversationDialog({ ticket, user, onClose }: { ticket: Ti
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/35 p-4 backdrop-blur-sm">
-      <section className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-card shadow-2xl">
-        <header className="flex items-start justify-between border-b px-5 py-4 sm:px-6 sm:py-5">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-foreground/35 p-4 backdrop-blur-sm">
+      <section className="my-auto flex max-h-[calc(100dvh-2rem)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-card shadow-2xl">
+        <header className="shrink-0 flex items-start justify-between border-b px-5 py-4 sm:px-6 sm:py-5">
           <div>
             <div className="flex items-center gap-2">
               <MessageCircle className="size-5 text-muted-foreground" />
@@ -105,7 +105,7 @@ export function TicketConversationDialog({ ticket, user, onClose }: { ticket: Ti
           <Button aria-label="Close conversation" onClick={onClose} size="icon" variant="ghost"><X /></Button>
         </header>
 
-        <nav aria-label="Ticket activity sections" className="flex gap-1 border-b px-4 py-2">
+        <nav aria-label="Ticket activity sections" className="flex shrink-0 gap-1 border-b px-4 py-2">
           <button aria-current={activeTab === "comments" ? "page" : undefined} className={cn("flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors", activeTab === "comments" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground")} onClick={() => setActiveTab("comments")}><MessageCircle className="size-4" /> Comments</button>
           <button aria-current={activeTab === "attachments" ? "page" : undefined} className={cn("flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors", activeTab === "attachments" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground")} onClick={() => setActiveTab("attachments")}><Paperclip className="size-4" /> Attachments</button>
         </nav>
@@ -115,7 +115,7 @@ export function TicketConversationDialog({ ticket, user, onClose }: { ticket: Ti
         ) : (
           <>
 
-        <div className="min-h-64 flex-1 overflow-y-auto bg-muted/20">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-muted/20">
           {commentsQuery.isLoading ? (
             <div className="flex min-h-72 items-center justify-center"><LoaderCircle className="animate-spin text-muted-foreground" /></div>
           ) : commentsQuery.isError ? (
@@ -151,7 +151,7 @@ export function TicketConversationDialog({ ticket, user, onClose }: { ticket: Ti
           />
         )}
 
-        {commentable ? <form className="border-t bg-card p-4 sm:px-6" onSubmit={submitComment}>
+        {commentable ? <form className="shrink-0 border-t bg-card p-4 sm:px-6" onSubmit={submitComment}>
           {replyingTo && (
             <div className="mb-3 flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-xs">
               <Reply className="size-3.5 text-muted-foreground" />
