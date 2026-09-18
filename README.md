@@ -126,3 +126,7 @@ frontend/  React single-page application
 ## License
 
 This project is intended for educational or internal use. Add a license file before distributing it publicly.
+
+## Author
+
+Ali Haydoura — built during the IDS internship.
